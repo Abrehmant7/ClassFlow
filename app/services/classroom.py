@@ -26,6 +26,9 @@ from app.schemas.classroom import (
     ClassJoinRequest
 )
 
+from app.repositories.course import ClassCourseRepository, CourseRegistrationRepository
+from app.services.course import CourseRegistrationService
+
 
 class ClassroomService:
     def __init__(
@@ -176,6 +179,14 @@ class ClassroomService:
             MEMBERSHIP_STATUS_APPROVED,
             datetime.now(timezone.utc),
         )
+        
+        registration_service = CourseRegistrationService(
+        membership_repository=self.membership_repository,
+        class_course_repository=ClassCourseRepository(self.session),
+        registration_repository=CourseRegistrationRepository(self.session),
+        )
+
+        await registration_service.register_default_courses(membership)
         await self.session.commit()
         await self.session.refresh(membership)
         return ClassMembershipRead.model_validate(membership)

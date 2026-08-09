@@ -1,6 +1,6 @@
 # ClassFlow Knowledge Base
 
-Last updated: 2026-07-27
+Last updated: 2026-07-30
 
 ## Project Goal
 
@@ -76,6 +76,7 @@ Current migrations:
 9646011027a1_module_zero_baseline.py
 ac57ddd31bea_create_users_table.py
 f29de09fc869_create_refresh_tokens_table.py
+85d87d97c121_create_classrooms_and_class_memberships.py
 ```
 
 Useful commands:
@@ -172,6 +173,104 @@ Swagger testing:
 - `OAuth2PasswordRequestForm` is used so Swagger's `Authorize` flow works.
 - `get_db_session()` lives in `app/database/session.py`, not inside auth-specific code.
 
+## Module 2 Status - Classrooms And Memberships
+
+Implemented:
+- `classrooms` table
+- `class_memberships` table
+- Classroom creation with generated unique join codes
+- Automatic approved representative membership for the classroom creator
+- Classroom read/update/list-mine endpoints
+- Join-class requests using a join code
+- Membership statuses: `pending`, `approved`, `rejected`, `removed`
+- Membership roles: `representative`, `student`
+- Representative-only approval and rejection of join requests
+- Representative-only member removal
+- Protection against removing the class creator
+- Approved-member checks for class access
+- Reusable class membership permission dependencies
+
+Current classroom endpoints:
+
+```text
+POST   /api/v1/classes
+GET    /api/v1/classes/mine
+GET    /api/v1/classes/{class_id}
+PATCH  /api/v1/classes/{class_id}
+POST   /api/v1/classes/{class_id}/join
+GET    /api/v1/classes/{class_id}/requests
+GET    /api/v1/classes/{class_id}/members
+```
+
+Current membership endpoints:
+
+```text
+PATCH  /api/v1/memberships/{membership_id}/approve
+PATCH  /api/v1/memberships/{membership_id}/reject
+DELETE /api/v1/memberships/{membership_id}
+```
+
+Module 2 behavior:
+- When a user creates a classroom, the service creates both the classroom and creator membership in one transaction.
+- The creator membership is created with role `representative` and status `approved`.
+- Users join a classroom through `POST /classes/{class_id}/join` with the correct `join_code`.
+- Existing approved users cannot send another join request.
+- Existing pending users cannot duplicate their join request.
+- Rejected or removed users may request to join again.
+- Pending users cannot access `GET /classes/{class_id}` because it requires approved membership.
+- Only approved representatives can update a classroom, list join requests, approve requests, reject requests, or remove members.
+- Membership approval/rejection/removal verifies that the acting representative belongs to the same class as the target membership.
+
+Permission dependencies:
+
+```text
+get_membership()
+get_approved_membership()
+require_representative()
+```
+
+Compatibility aliases currently exist:
+
+```text
+get_approved_member = get_approved_membership
+get_class_representative = require_representative
+```
+
+Important Module 2 files:
+
+```text
+app/models/classroom.py
+app/schemas/classroom.py
+app/repositories/classroom.py
+app/repositories/membership.py
+app/services/classroom.py
+app/api/dependencies.py
+app/api/routes/classes.py
+app/api/routes/memberships.py
+```
+
+Manual Module 2 smoke flow:
+
+```text
+User A registers and logs in.
+User A creates a classroom.
+User A automatically becomes approved representative.
+User B registers and logs in.
+User B requests to join using the class join code.
+User B cannot access the class while pending.
+User A lists pending requests.
+User A approves User B's membership request.
+User B can now access the class.
+User B cannot access representative-only routes.
+```
+
+Swagger testing notes:
+- Use `/auth/login` and Swagger `Authorize` separately for User A and User B.
+- Copy the `join_code` from User A's created classroom response.
+- Use User B's token when calling `POST /classes/{class_id}/join`.
+- Use User A's token when calling representative-only endpoints.
+- Switch back to User B's token to confirm approved-member access works but representative access fails.
+
 ## Verification Already Performed
 
 Module 1 smoke flow passed:
@@ -195,12 +294,12 @@ Pytest passed:
 Alembic current head:
 
 ```text
-f29de09fc869
+85d87d97c121
 ```
 
 ## Next Recommended Module
 
-Module 2 - Classrooms and Membership.
+Module 3 - Courses.
 
 Recommended implementation order:
 
@@ -216,31 +315,27 @@ tests
 manual Swagger checks
 ```
 
-Core Module 2 scenario:
+Module 3 should build on Module 2 permissions. Course creation and management should be class-scoped and should use the existing membership dependencies:
 
 ```text
-User A creates a classroom.
-User A automatically becomes approved representative.
-User B requests to join.
-User B cannot access class content while pending.
-User A approves User B.
-User B can access class content.
-User B cannot use representative-only endpoints.
+get_approved_membership()
+require_representative()
 ```
 
-Likely tables:
+Do not create course behavior that bypasses classroom membership checks. Class content should require approved membership, and representative-only course actions should require `require_representative()`.
+
+Likely next tables:
 
 ```text
-classrooms
-class_memberships
+courses
 ```
 
-Likely permission dependencies:
+Likely next endpoints:
 
 ```text
-get_membership()
-get_approved_member()
-get_class_representative()
+POST   /classes/{class_id}/courses
+GET    /classes/{class_id}/courses
+GET    /courses/{course_id}
+PATCH  /courses/{course_id}
+DELETE /courses/{course_id}
 ```
-
-Do not start courses/tasks until the full two-user classroom membership scenario works.

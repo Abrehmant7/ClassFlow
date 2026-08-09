@@ -85,3 +85,15 @@ class ClassMembershipRepository(BaseRepository[ClassMembership]):
         membership.responded_at = None
         await self.session.flush()
         return membership
+
+    async def has_approved_representative_membership(self, user_id: int) -> bool:
+        result = await self.session.execute(
+            select(ClassMembership.id)
+            .where(
+                ClassMembership.user_id == user_id,
+                ClassMembership.status == "approved",
+                ClassMembership.role == "representative",
+            )
+            .limit(1)
+        )
+        return result.scalar_one_or_none() is not None
