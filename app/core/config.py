@@ -23,6 +23,25 @@ class Settings(BaseSettings):
     GEMINI_API_KEY: str | None = None
     VECTOR_STORE_PROVIDER: str = "pgvector"
 
+    TASK_ATTACHMENT_STORAGE_DIR: str = "storage/task_attachments"
+    TASK_ATTACHMENT_MAX_SIZE_BYTES: int = 10 * 1024 * 1024
+    TASK_ATTACHMENT_ALLOWED_EXTENSIONS: list[str] = Field(
+        default_factory=lambda: ["pdf", "docx", "pptx", "xlsx", "txt", "png", "jpg", "jpeg", "zip"]
+    )
+    TASK_ATTACHMENT_ALLOWED_CONTENT_TYPES: list[str] = Field(
+        default_factory=lambda: [
+            "application/pdf",
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            "text/plain",
+            "image/png",
+            "image/jpeg",
+            "application/zip",
+            "application/x-zip-compressed",
+        ]
+    )
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
