@@ -1,6 +1,8 @@
 from datetime import datetime, timezone
 from io import BytesIO
 from pathlib import Path
+import shutil
+from uuid import uuid4
 
 import pytest
 from fastapi import UploadFile
@@ -246,6 +248,19 @@ def make_upload(filename: str, content_type: str, content: bytes) -> UploadFile:
     )
 
 
+@pytest.fixture
+def attachment_storage_dir(monkeypatch: pytest.MonkeyPatch):
+    storage_root = Path.cwd() / ".pytest_cache" / "task_attachment_storage" / uuid4().hex
+    monkeypatch.setattr("app.services.task.settings.TASK_ATTACHMENT_STORAGE_DIR", str(storage_root))
+
+    yield storage_root
+
+    resolved_root = storage_root.resolve()
+    allowed_root = (Path.cwd() / ".pytest_cache" / "task_attachment_storage").resolve()
+    if resolved_root == allowed_root or allowed_root in resolved_root.parents:
+        shutil.rmtree(resolved_root, ignore_errors=True)
+
+
 def make_service(
     *,
     memberships: list[ClassMembership],
@@ -411,11 +426,13 @@ async def test_invalid_attachment_files_are_rejected() -> None:
 
 
 @pytest.mark.anyio
-async def test_oversized_attachment_files_are_rejected(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+async def test_oversized_attachment_files_are_rejected(
+    monkeypatch: pytest.MonkeyPatch,
+    attachment_storage_dir: Path,
+) -> None:
     representative = make_membership(1, user_id=10, classroom_id=1, role=CLASS_ROLE_REPRESENTATIVE)
     task = make_task(1, classroom_id=1, created_by_user_id=10)
     service = make_service(memberships=[representative], tasks={task.id: task})
-    monkeypatch.setattr("app.services.task.settings.TASK_ATTACHMENT_STORAGE_DIR", str(tmp_path))
     monkeypatch.setattr("app.services.task.settings.TASK_ATTACHMENT_MAX_SIZE_BYTES", 4)
     upload = make_upload("notes.pdf", "application/pdf", b"12345")
 
@@ -423,11 +440,11 @@ async def test_oversized_attachment_files_are_rejected(monkeypatch: pytest.Monke
         await service.upload_attachment(task.id, user_id=10, file=upload)
 
     assert exc_info.value.detail["error_code"] == "ATTACHMENT_TOO_LARGE"
-    assert list(tmp_path.rglob("*")) == []
+    assert list(attachment_storage_dir.rglob("*")) == []
 
 
 @pytest.mark.anyio
-async def test_attachment_download_cannot_bypass_task_permissions(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_attachment_download_cannot_bypass_task_permissions() -> None:
     owner = make_membership(1, user_id=10, classroom_id=1, role=CLASS_ROLE_REPRESENTATIVE)
     unauthorized_student = make_membership(2, user_id=20, classroom_id=1)
     task = make_task(
@@ -436,9 +453,6 @@ async def test_attachment_download_cannot_bypass_task_permissions(tmp_path: Path
         created_by_user_id=10,
         class_course_id=7,
     )
-    attachment_path = tmp_path / "tasks" / "1" / "file.pdf"
-    attachment_path.parent.mkdir(parents=True)
-    attachment_path.write_bytes(b"pdf")
     attachment = TaskAttachment(
         id=1,
         task_id=task.id,
@@ -449,7 +463,6 @@ async def test_attachment_download_cannot_bypass_task_permissions(tmp_path: Path
         file_size=3,
         task=task,
     )
-    monkeypatch.setattr("app.services.task.settings.TASK_ATTACHMENT_STORAGE_DIR", str(tmp_path))
     service = make_service(
         memberships=[owner, unauthorized_student],
         tasks={task.id: task},
