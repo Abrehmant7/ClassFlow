@@ -36,6 +36,15 @@ class ClassroomRead(BaseModel):
 
     model_config = ConfigDict(from_attributes=True)
 
+class MembershipUserRead(BaseModel):
+    id: int
+    username: str
+    first_name: str | None
+    last_name: str | None
+    roll_number: str | None
+
+    model_config = ConfigDict(from_attributes=True)
+
 
 class ClassMembershipRead(BaseModel):
     id: int
@@ -47,6 +56,7 @@ class ClassMembershipRead(BaseModel):
     responded_at: datetime | None
     created_at: datetime
     updated_at: datetime
+    user: MembershipUserRead | None = None
 
     model_config = ConfigDict(from_attributes=True)
 

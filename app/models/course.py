@@ -55,6 +55,10 @@ class ClassCourse(Base):
         back_populates="class_course",
         cascade="all, delete-orphan",
     )
+    tasks: Mapped[list["Task"]] = relationship(
+        "Task",
+        back_populates="class_course",
+    )
 
 
 class CourseRegistration(Base):

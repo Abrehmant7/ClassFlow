@@ -1,4 +1,5 @@
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 
 from app.models.user import User
 from app.repositories.base import BaseRepository
@@ -24,6 +25,12 @@ class UserRepository(BaseRepository[User]):
         )
         return result.scalar_one_or_none()
 
+    async def get_by_roll_number(self, roll_number: str) -> User | None:
+        result = await self.session.execute(
+            select(User).where(User.roll_number == roll_number)
+        )
+        return result.scalar_one_or_none()
+
     async def create(self, user_in: UserCreate, password_hash: str) -> User:
         user = User(
             username=user_in.username,
@@ -36,7 +43,11 @@ class UserRepository(BaseRepository[User]):
             section=user_in.section,
         )
         self.session.add(user)
-        await self.session.commit()
+        try:
+            await self.session.commit()
+        except IntegrityError:
+            await self.session.rollback()
+            raise
         await self.session.refresh(user)
         return user
 
@@ -46,6 +57,10 @@ class UserRepository(BaseRepository[User]):
         for field, value in update_data.items():
             setattr(user, field, value)
 
-        await self.session.commit()
+        try:
+            await self.session.commit()
+        except IntegrityError:
+            await self.session.rollback()
+            raise
         await self.session.refresh(user)
         return user

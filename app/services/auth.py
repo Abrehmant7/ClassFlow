@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta, timezone
 
 from fastapi import status
+from sqlalchemy.exc import IntegrityError
 
 from app.core.exceptions import ClassFlowError
 from app.core.config import settings
@@ -44,10 +45,28 @@ class AuthService:
                 status_code=status.HTTP_409_CONFLICT,
             )
 
-        return await self.user_repository.create(
-            user_in=user_in,
-            password_hash=hash_password(user_in.password),
-        )
+        if user_in.roll_number is not None:
+            existing_roll_number = await self.user_repository.get_by_roll_number(
+                user_in.roll_number
+            )
+            if existing_roll_number is not None:
+                raise ClassFlowError(
+                    detail="Roll number is already registered",
+                    error_code="ROLL_NUMBER_ALREADY_EXISTS",
+                    status_code=status.HTTP_409_CONFLICT,
+                )
+
+        try:
+            return await self.user_repository.create(
+                user_in=user_in,
+                password_hash=hash_password(user_in.password),
+            )
+        except IntegrityError as exc:
+            raise ClassFlowError(
+                detail="User with these details already exists",
+                error_code="USER_ALREADY_EXISTS",
+                status_code=status.HTTP_409_CONFLICT,
+            ) from exc
 
     async def authenticate_user(self, username: str, password: str) -> User:
         user = await self.user_repository.get_by_username(username)

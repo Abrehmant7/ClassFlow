@@ -1,0 +1,16 @@
+ .env.example                                       |   4 [32m+[m
+ app/api/router.py                                  |   3 [32m+[m[31m-[m
+ app/api/routes/tasks.py                            | 192 [32m++++++[m[31m-[m
+ app/core/config.py                                 |  19 [32m+[m
+ ...d4f91_make_personal_tasks_classroom_optional.py |  66 [32m+++[m
+ ...4668ac_create_tasks_progress_and_attachments.py | 110 [32m++++[m
+ app/models/__init__.py                             |   6 [32m+[m[31m-[m
+ app/models/task.py                                 | 137 [32m+++++[m
+ app/repositories/task.py                           | 276 [32m++++++++++[m
+ app/schemas/task.py                                | 145 [32m+++++[m
+ app/services/task.py                               | 609 [32m+++++++++++++++++++++[m
+ docs/knowledge-base.md                             | 238 [32m+++++++[m[31m-[m
+ pyproject.toml                                     |   1 [32m+[m
+ requirements.txt                                   |   1 [32m+[m
+ tests/test_tasks_and_attachments.py                | 463 [32m++++++++++++++++[m
+ 15 files changed, 2238 insertions(+), 32 deletions(-)
