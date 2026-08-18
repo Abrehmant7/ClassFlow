@@ -41,6 +41,7 @@ class ClassroomService:
         self.session = classroom_repository.session
 
     async def create_classroom(self, classroom_in: ClassroomCreate, creator_id: int) -> Classroom:
+        """Create a classroom and make the creator its approved representative."""
         for _ in range(10):
             join_code = await self._generate_unique_join_code()
 
@@ -127,6 +128,7 @@ class ClassroomService:
         )
 
     async def join_classroom(self, class_id: int, user_id: int, join_in: ClassJoinRequest) -> ClassMembershipRead:
+        """Create or reopen a pending join request after validating the classroom join code."""
         classroom = await self.classroom_repository.get_by_id(class_id)
 
         if classroom is None:
@@ -158,16 +160,19 @@ class ClassroomService:
         return ClassMembershipRead.model_validate(membership)
 
     async def list_join_requests(self, class_id: int) -> list[ClassMembershipRead]:
+        """Return pending membership requests for a classroom."""
         requests = await self.membership_repository.list_pending_for_class(class_id)
         return [ClassMembershipRead.model_validate(request) for request in requests]
 
 
     async def list_members(self, class_id: int) -> list[ClassMembershipRead]:
+        """Return approved members for a classroom."""
         members = await self.membership_repository.list_approved_for_class(class_id)
         return [ClassMembershipRead.model_validate(member) for member in members]
 
 
     async def approve_membership(self, membership_id: int, representative_user_id: int) -> ClassMembershipRead:
+        """Approve a pending member and register them in active default class courses."""
         membership = await self._get_membership_or_404(membership_id)
         await self._require_same_class_representative(representative_user_id, membership.classroom_id)
 
@@ -179,11 +184,12 @@ class ClassroomService:
             MEMBERSHIP_STATUS_APPROVED,
             datetime.now(timezone.utc),
         )
-        
+
+        # Keep membership approval and default-course registration in one transaction.
         registration_service = CourseRegistrationService(
-        membership_repository=self.membership_repository,
-        class_course_repository=ClassCourseRepository(self.session),
-        registration_repository=CourseRegistrationRepository(self.session),
+            membership_repository=self.membership_repository,
+            class_course_repository=ClassCourseRepository(self.session),
+            registration_repository=CourseRegistrationRepository(self.session),
         )
 
         await registration_service.register_default_courses(membership)
@@ -193,6 +199,7 @@ class ClassroomService:
 
 
     async def reject_membership(self, membership_id: int, representative_user_id: int) -> ClassMembershipRead:
+        """Reject a pending membership request for the representative's own classroom."""
         membership = await self._get_membership_or_404(membership_id)
         await self._require_same_class_representative(representative_user_id, membership.classroom_id)
 
@@ -210,6 +217,7 @@ class ClassroomService:
 
 
     async def remove_membership(self, membership_id: int, representative_user_id: int) -> None:
+        """Mark a member as removed while protecting the original classroom creator."""
         membership = await self._get_membership_or_404(membership_id)
         await self._require_same_class_representative(representative_user_id, membership.classroom_id)
 

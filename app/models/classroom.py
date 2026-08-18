@@ -38,6 +38,11 @@ class Classroom(Base):
         back_populates="classroom",
         cascade="all, delete-orphan",
     )
+    tasks: Mapped[list["Task"]] = relationship(
+        "Task",
+        back_populates="classroom",
+        cascade="all, delete-orphan",
+    )
 
 
 class ClassMembership(Base):
@@ -63,6 +68,7 @@ class ClassMembership(Base):
     responded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
+    
 
     user = relationship("User")
     classroom: Mapped[Classroom] = relationship("Classroom", back_populates="memberships")

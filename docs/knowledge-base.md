@@ -1,24 +1,34 @@
 # ClassFlow Knowledge Base
 
-Last updated: 2026-07-30
+Last updated: 2026-08-18
 
 ## Project Goal
 
-ClassFlow is a FastAPI and PostgreSQL backend for class-based academic coordination. The main product will support users, classrooms, memberships, courses, shared tasks, private tasks, announcements, resources, notifications, dashboards, and a future class-scoped RAG chatbot.
+ClassFlow is an academic coordination platform for students and class representatives. The near-term product is a working non-AI MVP with authentication, classrooms, memberships, courses, tasks, attachments, and a personal academic feed. Later modules will add announcements, resources, notifications, dashboards, and a class-scoped RAG chatbot.
 
-The project should be built in phases. The most important early milestone is a working non-AI MVP: authentication, classrooms, memberships, courses, tasks, and personalized feed.
+The product should stay permission-aware. Class content must remain scoped to approved classroom members, course-specific content must remain scoped to registered students, and personal tasks must remain private to their creator even when linked to a class or course.
 
-## Current Backend Stack
+## Current Stack
 
-- Python virtual environment: `myvenv`
-- API framework: FastAPI
-- Database: PostgreSQL
-- ORM: SQLAlchemy async
-- Migrations: Alembic
-- Auth: JWT access tokens plus database-backed refresh tokens
-- Password hashing: `pwdlib[argon2]`
-- JWT library: `PyJWT`
-- Testing: pytest
+Backend:
+
+- FastAPI
+- PostgreSQL
+- SQLAlchemy async ORM
+- Alembic migrations
+- Pydantic v2 schemas
+- JWT access tokens
+- Database-backed refresh tokens
+- `pwdlib[argon2]` password hashing
+- pytest
+
+Frontend:
+
+- Vite
+- React
+- React Router
+- Axios
+- Tailwind CSS
 
 ## Project Structure
 
@@ -28,27 +38,36 @@ app/
     routes/        Feature route modules
     dependencies.py
     router.py
-  core/            Settings, security, logging, exceptions, handlers
+  core/            Settings, security helpers, exceptions, handlers
   database/        SQLAlchemy base/session and Alembic migrations
   models/          SQLAlchemy ORM models
   repositories/    Database query layer
   schemas/         Pydantic request/response schemas
   services/        Business logic
   ai/              Future RAG/chatbot integration
+frontend/
+  src/
+    api/           Axios API wrappers
+    components/    Shared UI components
+    contexts/      Auth/session context
+    layouts/       Protected app shell
+    pages/         Route screens
+    styles/        Global styles
 tests/
 ```
 
-Structure decision:
-- Routes should stay thin.
-- Services own business rules.
+Architecture decisions:
+
+- Routes stay thin.
+- Services own permission and business rules.
 - Repositories own database queries.
-- Schemas control API input/output.
+- Schemas define API input/output.
 - Models map database tables.
-- `ai/` is isolated so future RAG retrieval can stay class-scoped and permission-aware.
+- Future RAG work must be class-scoped and permission-aware.
 
 ## Environment Settings
 
-App settings use the `CLASSFLOW_` prefix to avoid collisions with global environment variables.
+Settings use the `CLASSFLOW_` prefix.
 
 Important variables:
 
@@ -57,140 +76,134 @@ CLASSFLOW_PROJECT_NAME=ClassFlow
 CLASSFLOW_ENVIRONMENT=local
 CLASSFLOW_DEBUG=true
 CLASSFLOW_API_V1_PREFIX=/api/v1
-CLASSFLOW_DATABASE_URL=postgresql+asyncpg://...
-CLASSFLOW_SECRET_KEY=...
+CLASSFLOW_DATABASE_URL=postgresql+asyncpg://postgres:postgres@localhost:5432/classflow
+CLASSFLOW_SECRET_KEY=change-me-in-local-env
 CLASSFLOW_JWT_ALGORITHM=HS256
 CLASSFLOW_ACCESS_TOKEN_EXPIRE_MINUTES=30
 CLASSFLOW_REFRESH_TOKEN_EXPIRE_DAYS=7
+CLASSFLOW_CORS_ORIGINS=["http://localhost:3000","http://localhost:5173"]
+CLASSFLOW_OPENAI_API_KEY=
+CLASSFLOW_GEMINI_API_KEY=
+CLASSFLOW_VECTOR_STORE_PROVIDER=pgvector
 ```
 
-Never commit real `.env` secrets. Use `.env.example` for placeholders.
+Task attachment settings in the backend task module:
+
+```env
+CLASSFLOW_TASK_ATTACHMENT_STORAGE_DIR=storage/task_attachments
+CLASSFLOW_TASK_ATTACHMENT_MAX_SIZE_BYTES=10485760
+```
+
+Never commit real `.env` secrets.
 
 ## Database And Migrations
 
-Database schema is managed through Alembic. Do not use `Base.metadata.create_all(...)` in `main.py`.
+Database schema is managed through Alembic. Do not call `Base.metadata.create_all(...)` in `main.py`.
 
-Current migrations:
+Useful commands:
+
+```powershell
+.\myvenv\Scripts\python.exe -m alembic current
+.\myvenv\Scripts\python.exe -m alembic history
+.\myvenv\Scripts\python.exe -m alembic revision --autogenerate -m "message"
+.\myvenv\Scripts\python.exe -m alembic upgrade head
+.\myvenv\Scripts\python.exe -m alembic downgrade -1
+```
+
+Current migration sequence:
 
 ```text
 9646011027a1_module_zero_baseline.py
 ac57ddd31bea_create_users_table.py
 f29de09fc869_create_refresh_tokens_table.py
 85d87d97c121_create_classrooms_and_class_memberships.py
+00f7fc38ba77_create_courses_and_course_registrations.py
+f2659f4668ac_create_tasks_progress_and_attachments.py
+b7428b2d4f91_make_personal_tasks_classroom_optional.py
 ```
 
-Useful commands:
+Important task migration note:
 
-```powershell
-alembic current
-alembic history
-alembic revision --autogenerate -m "message"
-alembic upgrade head
-alembic downgrade -1
-```
+- `f2659f4668ac` created `tasks.classroom_id` as `NOT NULL`.
+- `b7428b2d4f91` makes `tasks.classroom_id` nullable so independent personal tasks can exist.
+- If creating a personal task with no class fails at the database level, run `alembic upgrade head`.
 
-Current DB session setup uses `NullPool`. This keeps local FastAPI `TestClient` checks stable with asyncpg by avoiding reuse of loop-bound pooled connections. Later, deployment can make pooling configurable.
+The async DB engine currently uses `NullPool` to avoid event-loop issues during local testing.
 
-## Module 0 Status
+## Module 0 - Foundation
 
-Completed:
+Implemented:
+
 - FastAPI application structure
 - Environment settings
 - PostgreSQL connection
 - SQLAlchemy async session management
 - Alembic setup
-- Standardized error response handlers
+- Standardized exception handlers
 - Logging setup
 - Health endpoint
 - Initial pytest setup
 
-Verified:
+Endpoints:
 
-```powershell
-pytest
-uvicorn app.main:app --reload
-Invoke-RestMethod http://127.0.0.1:8000/health
+```text
+GET /health
+GET /api/v1/health
 ```
 
-Expected health response:
-
-```json
-{
-  "status": "ok",
-  "service": "ClassFlow",
-  "environment": "local"
-}
-```
-
-## Module 1 Status - Authentication
+## Module 1 - Authentication
 
 Implemented:
+
 - `users` table
 - `refresh_tokens` table
 - User registration
 - Password hashing
 - Login with `OAuth2PasswordRequestForm`
 - JWT access tokens
-- Refresh token generation, storage, rotation, and revocation
+- Refresh token generation, hashing, storage, rotation, and revocation
 - Logout through refresh-token revocation
 - Protected current-user dependency
-- `GET /api/v1/users/me`
-- `PATCH /api/v1/users/me`
+- Current-user profile read/update
 
-Current auth endpoints:
+Endpoints:
 
 ```text
-POST /api/v1/auth/register
-POST /api/v1/auth/login
-POST /api/v1/auth/refresh
-POST /api/v1/auth/logout
-GET  /api/v1/users/me
+POST  /api/v1/auth/register
+POST  /api/v1/auth/login
+POST  /api/v1/auth/refresh
+POST  /api/v1/auth/logout
+GET   /api/v1/users/me
 PATCH /api/v1/users/me
 ```
 
 Auth behavior:
+
 - Login returns an access token and refresh token.
-- Access token is used for protected endpoints.
-- Refresh token is stored in the database as a SHA-256 hash, not in plain text.
-- Refresh endpoint rotates refresh tokens: the old refresh token becomes invalid and a new one is issued.
+- Access token is used with protected endpoints.
+- Refresh tokens are stored as SHA-256 hashes.
+- Refresh rotates tokens: the old refresh token becomes invalid.
 - Logout revokes the refresh token.
-- JWT access tokens remain valid until expiry because they are stateless. The frontend should discard the access token on logout.
+- JWT access tokens remain valid until expiry because they are stateless.
 
-Swagger testing:
-- Register first.
-- Use `/auth/login` with form fields `username` and `password`.
-- Click Swagger `Authorize`.
-- Use the access token for `/users/me`.
-
-## Important Decisions
-
-- Refresh tokens were added during Module 1 instead of postponing them.
-- Refresh tokens are opaque random strings, not JWTs.
-- Only refresh-token hashes are stored in PostgreSQL.
-- We are not blacklisting access tokens yet.
-- `GET /users/me` is correct because it reads the authenticated user's profile.
-- `PATCH /users/me` is correct for partial profile updates.
-- `OAuth2PasswordRequestForm` is used so Swagger's `Authorize` flow works.
-- `get_db_session()` lives in `app/database/session.py`, not inside auth-specific code.
-
-## Module 2 Status - Classrooms And Memberships
+## Module 2 - Classrooms And Memberships
 
 Implemented:
+
 - `classrooms` table
 - `class_memberships` table
-- Classroom creation with generated unique join codes
-- Automatic approved representative membership for the classroom creator
+- Classroom creation with unique join codes
+- Automatic approved representative membership for classroom creator
 - Classroom read/update/list-mine endpoints
-- Join-class requests using a join code
+- Join requests using join codes
 - Membership statuses: `pending`, `approved`, `rejected`, `removed`
 - Membership roles: `representative`, `student`
-- Representative-only approval and rejection of join requests
+- Representative-only request approval/rejection
 - Representative-only member removal
 - Protection against removing the class creator
-- Approved-member checks for class access
-- Reusable class membership permission dependencies
+- Reusable membership permission dependencies
 
-Current classroom endpoints:
+Endpoints:
 
 ```text
 POST   /api/v1/classes
@@ -200,142 +213,312 @@ PATCH  /api/v1/classes/{class_id}
 POST   /api/v1/classes/{class_id}/join
 GET    /api/v1/classes/{class_id}/requests
 GET    /api/v1/classes/{class_id}/members
-```
-
-Current membership endpoints:
-
-```text
 PATCH  /api/v1/memberships/{membership_id}/approve
 PATCH  /api/v1/memberships/{membership_id}/reject
 DELETE /api/v1/memberships/{membership_id}
 ```
 
-Module 2 behavior:
-- When a user creates a classroom, the service creates both the classroom and creator membership in one transaction.
-- The creator membership is created with role `representative` and status `approved`.
-- Users join a classroom through `POST /classes/{class_id}/join` with the correct `join_code`.
-- Existing approved users cannot send another join request.
-- Existing pending users cannot duplicate their join request.
+Core rules:
+
+- Classroom creator becomes an approved representative.
+- Pending members cannot access class content.
+- Existing approved users cannot create duplicate join requests.
+- Pending users cannot duplicate a join request.
 - Rejected or removed users may request to join again.
-- Pending users cannot access `GET /classes/{class_id}` because it requires approved membership.
-- Only approved representatives can update a classroom, list join requests, approve requests, reject requests, or remove members.
-- Membership approval/rejection/removal verifies that the acting representative belongs to the same class as the target membership.
+- Only approved representatives can update classrooms, list requests, approve/reject requests, and remove members.
 
-Permission dependencies:
+## Module 3 - Courses And Registrations
 
-```text
-get_membership()
-get_approved_membership()
-require_representative()
-```
+Implemented:
 
-Compatibility aliases currently exist:
+- `courses` table for global catalogue courses
+- `class_courses` table for classroom-specific courses
+- `course_registrations` table for student registration
+- Catalogue search/list/detail/create endpoints
+- Representative-managed class course assignment
+- Student registration/drop/re-registration
+- Automatic default-course registration when membership is approved
+- Automatic registration of existing approved members when a representative adds a default course
+- Course code normalization to uppercase
+- Duplicate protection for catalogue and class-course records
 
-```text
-get_approved_member = get_approved_membership
-get_class_representative = require_representative
-```
-
-Important Module 2 files:
+Endpoints:
 
 ```text
-app/models/classroom.py
-app/schemas/classroom.py
-app/repositories/classroom.py
-app/repositories/membership.py
-app/services/classroom.py
-app/api/dependencies.py
-app/api/routes/classes.py
-app/api/routes/memberships.py
+GET    /api/v1/courses
+GET    /api/v1/courses/{course_id}
+POST   /api/v1/courses
+POST   /api/v1/classes/{class_id}/courses
+GET    /api/v1/classes/{class_id}/courses
+PATCH  /api/v1/class-courses/{class_course_id}
+DELETE /api/v1/class-courses/{class_course_id}
+POST   /api/v1/class-courses/{class_course_id}/register
+DELETE /api/v1/class-courses/{class_course_id}/register
+GET    /api/v1/classes/{class_id}/my-courses
 ```
 
-Manual Module 2 smoke flow:
+Core rules:
+
+- Only approved representatives can create catalogue courses.
+- Only representatives of the same class can add/update/remove class courses.
+- Only approved class members can view/register/drop class courses.
+- Pending members cannot register for courses.
+- Cross-class course registration is blocked.
+
+## Module 4 - Tasks, Progress, And Attachments
+
+Implemented:
+
+- `tasks` table
+- `task_progress` table
+- `task_attachments` table
+- Shared class-wide tasks
+- Shared course-specific tasks
+- Personal tasks with nullable class/course relationships
+- Personal task completion/reopen without deletion
+- Per-student progress for shared tasks
+- Attachment upload/list/download/delete
+- File extension, content type, size, and storage-key validation
+- Permission checks before attachment download
+
+Task model:
 
 ```text
-User A registers and logs in.
-User A creates a classroom.
-User A automatically becomes approved representative.
-User B registers and logs in.
-User B requests to join using the class join code.
-User B cannot access the class while pending.
-User A lists pending requests.
-User A approves User B's membership request.
-User B can now access the class.
-User B cannot access representative-only routes.
+Task
+- id
+- classroom_id nullable
+- class_course_id nullable
+- created_by_user_id
+- title
+- description
+- task_type
+- visibility shared | personal
+- priority
+- status
+- deadline
+- completed_at
+- created_at
+- updated_at
 ```
 
-Swagger testing notes:
-- Use `/auth/login` and Swagger `Authorize` separately for User A and User B.
-- Copy the `join_code` from User A's created classroom response.
-- Use User B's token when calling `POST /classes/{class_id}/join`.
-- Use User A's token when calling representative-only endpoints.
-- Switch back to User B's token to confirm approved-member access works but representative access fails.
-
-## Verification Already Performed
-
-Module 1 smoke flow passed:
+Valid task relationship combinations:
 
 ```text
-register 201
-login 200
-me 200
-refresh 200
-old_refresh_reuse 401
-logout 200
-refresh_after_logout 401
+shared   + classroom required + class_course optional
+personal + classroom optional + class_course optional
 ```
 
-Pytest passed:
+If `class_course_id` is present, `classroom_id` must also be present and must match the `ClassCourse.classroom_id`.
+
+Endpoints:
 
 ```text
-2 passed
+POST   /api/v1/classes/{class_id}/tasks
+POST   /api/v1/personal-tasks
+GET    /api/v1/classes/{class_id}/tasks
+GET    /api/v1/tasks
+GET    /api/v1/tasks/{task_id}
+PATCH  /api/v1/tasks/{task_id}
+DELETE /api/v1/tasks/{task_id}
+PUT    /api/v1/tasks/{task_id}/progress
+PUT    /api/v1/personal-tasks/{task_id}/complete
+PUT    /api/v1/personal-tasks/{task_id}/reopen
+POST   /api/v1/tasks/{task_id}/attachments
+GET    /api/v1/tasks/{task_id}/attachments
+GET    /api/v1/task-attachments/{attachment_id}/download
+DELETE /api/v1/task-attachments/{attachment_id}
 ```
 
-Alembic current head:
+Shared task rules:
+
+- Shared tasks require a classroom.
+- Shared tasks can only be created by approved representatives.
+- Shared course tasks require an active class course in the same classroom.
+- Shared tasks use `TaskProgress` for each student's completion.
+- Shared tasks can be cancelled or archived, but not hard-deleted.
+- Shared tasks cannot be globally marked completed.
+- Cancelled or archived shared tasks cannot receive progress updates.
+
+Personal task rules:
+
+- Any authenticated user can create a personal task.
+- Personal tasks are visible only to their creator.
+- Personal tasks may be independent, class-linked, or course-linked.
+- Class-linked personal tasks require approved membership in that class.
+- Course-linked personal tasks require active registration in that class course.
+- Personal tasks use their own `status` and `completed_at`, not `TaskProgress`.
+- Personal tasks are not deleted on completion.
+- Personal tasks can be reopened.
+- Only the owner can delete a personal task.
+
+Attachment rules:
+
+- Attachments require task-management permission to upload/delete.
+- Downloads require task-view permission.
+- Invalid file extensions are rejected.
+- Invalid content types are rejected.
+- Oversized files are rejected.
+- Storage keys cannot escape the attachment storage directory.
+
+## Module 5 - Personal Feed, Filtering, And Search
+
+Implemented backend:
+
+- Global feed endpoint combining personal tasks and accessible shared tasks
+- Summary counts
+- Filter options
+- Authorization-aware repository queries
+- Search after authorization filtering
+- Timezone-aware due grouping
+- Pagination
+- Per-item permissions for frontend actions
+
+Endpoints:
 
 ```text
-85d87d97c121
+GET /api/v1/feed
+GET /api/v1/feed/summary
+GET /api/v1/feed/filter-options
 ```
 
-## Next Recommended Module
-
-Module 3 - Courses.
-
-Recommended implementation order:
+`GET /api/v1/feed` query parameters:
 
 ```text
-models
-migration
-schemas
-repositories
-services
-permission dependencies
-routes
-tests
-manual Swagger checks
+view=active|completed|archived|all
+visibility=all|personal|shared
+classroom_id optional
+class_course_id optional
+task_type optional
+priority optional
+due=overdue|today|week|later|no_deadline optional
+search optional, max 100 chars
+timezone optional, default UTC
+page default 1
+page_size default 20, max 100
 ```
 
-Module 3 should build on Module 2 permissions. Course creation and management should be class-scoped and should use the existing membership dependencies:
+Feed visibility rules:
+
+- Personal tasks are visible only to their creator.
+- Shared class-wide tasks are visible to approved members of the classroom.
+- Shared course-specific tasks are visible only to actively registered students for that class course.
+- Representatives do not automatically see every course-specific shared task in the feed unless they are registered in the course.
+
+Feed response behavior:
+
+- Personal completed tasks derive completion from `Task.status` and `Task.completed_at`.
+- Shared completed tasks derive completion from the current user's `TaskProgress`.
+- Each item includes context type: `independent`, `class`, or `course`.
+- Each item includes classroom/course context when available.
+- Each item includes permissions: `can_edit`, `can_delete`, `can_manage`, `can_update_progress`.
+- Due groups are computed using the caller's timezone.
+
+Search behavior:
+
+- Search is trimmed.
+- Empty search is ignored.
+- Terms longer than 100 characters are rejected.
+- Search runs against task title, task description, classroom name, course name, and course code.
+- Search is applied after authorization constraints in the SQL query.
+
+## Frontend State
+
+Implemented frontend screens include:
 
 ```text
-get_approved_membership()
-require_representative()
+/register
+/login
+/dashboard
+/classes
+/classes/new
+/classes/join
+/classes/:classId
+/classes/:classId/courses
+/classes/:classId/my-courses
+/classes/:classId/tasks
+/tasks
+/tasks/:taskId
+/feed
+/profile
+/courses
 ```
 
-Do not create course behavior that bypasses classroom membership checks. Class content should require approved membership, and representative-only course actions should require `require_representative()`.
+Frontend API helpers currently cover:
 
-Likely next tables:
+- auth
+- classrooms
+- memberships
+- courses
+- tasks
+- feed
+
+Frontend should continue to consume backend permission flags instead of duplicating backend authorization logic.
+
+## Testing
+
+Backend tests:
+
+```powershell
+.\myvenv\Scripts\python.exe -m pytest
+```
+
+Focused task/feed tests:
+
+```powershell
+.\myvenv\Scripts\python.exe -m pytest tests\test_tasks_and_attachments.py tests\test_feed.py tests\test_health.py
+```
+
+Current backend coverage includes:
+
+- Health endpoints
+- Task guardrails
+- Personal task visibility and completion retention
+- Shared task progress upsert
+- Cancelled-task progress rejection
+- Attachment validation and permission checks
+- Feed item shaping
+- Feed search validation
+- Feed filter authorization
+- Feed summary/filter option mapping
+- Due group classification
+
+Frontend checks:
+
+```powershell
+cd frontend
+npm run build
+```
+
+## Current Branch Notes
+
+Recent module branches:
 
 ```text
-courses
+feature/tasks-attachments
+feature/personal-feed
+frontend-foundation
 ```
 
-Likely next endpoints:
+The task/attachment backend has been merged through PR #5. The feed backend lives on `feature/personal-feed` and should be opened against `main` after fetching the latest remote state.
+
+If GitHub does not show the compare banner, open:
 
 ```text
-POST   /classes/{class_id}/courses
-GET    /classes/{class_id}/courses
-GET    /courses/{course_id}
-PATCH  /courses/{course_id}
-DELETE /courses/{course_id}
+https://github.com/Abrehmant7/ClassFlow/compare/main...feature/personal-feed?expand=1
 ```
+
+## Next Backend Work
+
+Likely next backend modules:
+
+- Announcements
+- Resources
+- Notifications
+- Dashboard aggregation
+- RAG ingestion and class-scoped retrieval
+- Chatbot endpoints
+
+RAG safety rule:
+
+- Personal tasks must never enter the shared RAG vector store.
+- Shared resources/tasks should only be indexed with class/course permission metadata.
