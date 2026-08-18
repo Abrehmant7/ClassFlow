@@ -3,7 +3,9 @@ import { Link, useNavigate } from "react-router-dom";
 
 import { joinClassroom } from "../api/classrooms.js";
 import Alert from "../components/Alert.jsx";
+import Button from "../components/Button.jsx";
 import FormField from "../components/FormField.jsx";
+import PageHeader from "../components/PageHeader.jsx";
 import { parseApiError } from "../utils/errors.js";
 
 const initialForm = {
@@ -47,21 +49,14 @@ function JoinClassPage() {
 
   return (
     <section className="mx-auto grid max-w-5xl gap-8 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
-      <div className="space-y-4">
-        <p className="text-sm font-semibold uppercase tracking-wide text-[#256f68]">
-          Join class
-        </p>
-        <h1 className="text-3xl font-bold text-[#172033] sm:text-4xl">
-          Request Membership
-        </h1>
-        <p className="max-w-xl text-base leading-7 text-[#566176]">
-          Use the class ID and join code shared by your class representative.
-          Requests remain pending until a representative approves them.
-        </p>
-      </div>
+      <PageHeader
+        description="Use the class ID and join code shared by your class representative. Requests remain pending until a representative approves them."
+        eyebrow="Join class"
+        title="Request Membership"
+      />
 
       <form
-        className="rounded-md border border-[#dde4ef] bg-white p-5 shadow-sm sm:p-6"
+        className="cf-card p-5 sm:p-6"
         onSubmit={handleSubmit}
       >
         <div className="space-y-5">
@@ -102,17 +97,13 @@ function JoinClassPage() {
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <Link
               to="/classes"
-              className="text-sm font-semibold text-[#256f68] hover:text-[#1f5d58]"
+              className="text-sm font-semibold text-blue-700 hover:text-blue-900 cf-focus"
             >
               Back to classes
             </Link>
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="inline-flex items-center justify-center rounded-md bg-[#256f68] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[#1f5d58] focus:outline-none focus:ring-2 focus:ring-[#256f68] focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-[#8ebbb5]"
-            >
+            <Button disabled={isSubmitting} type="submit" variant="primary">
               {isSubmitting ? "Submitting request..." : "Request membership"}
-            </button>
+            </Button>
           </div>
         </div>
       </form>
