@@ -1,6 +1,7 @@
 from datetime import datetime
 
 from sqlalchemy import select
+from sqlalchemy.orm import selectinload
 
 from app.models.classroom import ClassMembership
 from app.repositories.base import BaseRepository
@@ -9,13 +10,17 @@ from app.repositories.base import BaseRepository
 class ClassMembershipRepository(BaseRepository[ClassMembership]):
     async def get_by_id(self, membership_id: int) -> ClassMembership | None:
         result = await self.session.execute(
-            select(ClassMembership).where(ClassMembership.id == membership_id)
+            select(ClassMembership)
+            .options(selectinload(ClassMembership.user))
+            .where(ClassMembership.id == membership_id)
         )
         return result.scalar_one_or_none()
 
     async def get_by_user_and_class(self, user_id: int, classroom_id: int) -> ClassMembership | None:
         result = await self.session.execute(
-            select(ClassMembership).where(
+            select(ClassMembership)
+            .options(selectinload(ClassMembership.user))
+            .where(
                 ClassMembership.user_id == user_id,
                 ClassMembership.classroom_id == classroom_id,
             )
@@ -25,6 +30,7 @@ class ClassMembershipRepository(BaseRepository[ClassMembership]):
     async def list_pending_for_class(self, classroom_id: int) -> list[ClassMembership]:
         result = await self.session.execute(
             select(ClassMembership)
+            .options(selectinload(ClassMembership.user))
             .where(
                 ClassMembership.classroom_id == classroom_id,
                 ClassMembership.status == "pending",
@@ -36,6 +42,7 @@ class ClassMembershipRepository(BaseRepository[ClassMembership]):
     async def list_approved_for_class(self, classroom_id: int) -> list[ClassMembership]:
         result = await self.session.execute(
             select(ClassMembership)
+            .options(selectinload(ClassMembership.user))
             .where(
                 ClassMembership.classroom_id == classroom_id,
                 ClassMembership.status == "approved",

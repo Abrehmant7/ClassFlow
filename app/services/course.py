@@ -33,10 +33,12 @@ class CourseService:
         self.session = course_repository.session
 
     async def list_courses(self, search: str | None = None) -> list[CourseRead]:
+        """Return the searchable global course catalogue."""
         courses = await self.course_repository.list(search)
         return [CourseRead.model_validate(course) for course in courses]
 
     async def get_course(self, course_id: int) -> CourseRead:
+        """Return one catalogue course or raise a 404."""
         course = await self.course_repository.get_by_id(course_id)
 
         if course is None:
@@ -45,6 +47,7 @@ class CourseService:
         return CourseRead.model_validate(course)
 
     async def create_course(self, course_in: CourseCreate, user_id: int) -> CourseRead:
+        """Create a normalized catalogue course for users who represent at least one class."""
         is_representative = await self.membership_repository.has_approved_representative_membership(user_id)
 
         if not is_representative:
@@ -75,6 +78,7 @@ class CourseService:
             raise ClassFlowError("Course already exists", "COURSE_ALREADY_EXISTS", status.HTTP_409_CONFLICT)
 
     async def add_class_course(self, classroom_id: int, class_course_in: ClassCourseCreate, user_id: int) -> ClassCourseRead:
+        """Attach an existing catalogue course to a classroom managed by the representative."""
         course = await self.course_repository.get_by_id(class_course_in.course_id)
 
         if course is None:
@@ -89,6 +93,7 @@ class CourseService:
             if existing.is_active:
                 raise ClassFlowError("Course is already added to this class", "CLASS_COURSE_ALREADY_EXISTS", status.HTTP_409_CONFLICT)
 
+            # Reactivate soft-deleted class courses to preserve historical registrations.
             existing.instructor_name = class_course_in.instructor_name
             existing.is_default = class_course_in.is_default
             existing.is_active = True
@@ -102,6 +107,7 @@ class CourseService:
             )
 
         if class_course.is_default and class_course.is_active:
+            # Keep default-course registration in the same transaction as the class-course change.
             registration_service = CourseRegistrationService(
                 membership_repository=self.membership_repository,
                 class_course_repository=self.class_course_repository,
@@ -114,16 +120,19 @@ class CourseService:
         return ClassCourseRead.model_validate(class_course)
 
     async def list_class_courses(self, classroom_id: int, include_inactive: bool = False) -> list[ClassCourseRead]:
+        """Return active class courses, optionally including soft-deleted records."""
         class_courses = await self.class_course_repository.list_for_class(classroom_id, include_inactive)
         return [ClassCourseRead.model_validate(class_course) for class_course in class_courses]
 
     async def update_class_course(self, class_course_id: int, class_course_in: ClassCourseUpdate, user_id: int) -> ClassCourseRead:
+        """Update a class course only when the user represents that same classroom."""
         class_course = await self._get_class_course_or_404(class_course_id)
         await self._require_same_class_representative(user_id, class_course.classroom_id)
 
         class_course = await self.class_course_repository.update(class_course, class_course_in)
 
         if class_course.is_active and class_course.is_default:
+            # Newly defaulted courses should reach members who were approved before the change.
             registration_service = CourseRegistrationService(
                 membership_repository=self.membership_repository,
                 class_course_repository=self.class_course_repository,
@@ -136,6 +145,7 @@ class CourseService:
         return ClassCourseRead.model_validate(class_course)
 
     async def delete_class_course(self, class_course_id: int, user_id: int) -> None:
+        """Soft-delete a class course after same-class representative verification."""
         class_course = await self._get_class_course_or_404(class_course_id)
         await self._require_same_class_representative(user_id, class_course.classroom_id)
 
@@ -180,6 +190,7 @@ class CourseRegistrationService:
         self.session = registration_repository.session
 
     async def register_default_courses(self, membership) -> None:
+        """Register an approved member in all active default courses for their classroom."""
         class_courses = await self.class_course_repository.list_active_default_for_class(membership.classroom_id)
 
         for class_course in class_courses:
@@ -189,6 +200,7 @@ class CourseRegistrationService:
             )
 
     async def register_existing_approved_members_for_default_course(self, class_course: ClassCourse) -> None:
+        """Register current approved class members when a default course is added or enabled."""
         if not class_course.is_active or not class_course.is_default:
             return
 
@@ -201,6 +213,7 @@ class CourseRegistrationService:
             )
 
     async def register_optional_course(self, class_course_id: int, user_id: int) -> CourseRegistrationRead:
+        """Register an approved class member in an active class course."""
         class_course = await self._get_active_class_course_or_404(class_course_id)
         membership = await self._get_approved_membership_for_class(user_id, class_course.classroom_id)
 
@@ -215,6 +228,7 @@ class CourseRegistrationService:
         return CourseRegistrationRead.model_validate(registration)
 
     async def drop_course(self, class_course_id: int, user_id: int) -> None:
+        """Drop an active course registration for an approved member of the same class."""
         class_course = await self._get_active_class_course_or_404(class_course_id)
         membership = await self._get_approved_membership_for_class(user_id, class_course.classroom_id)
         registration = await self.registration_repository.get_by_membership_and_class_course(
@@ -229,6 +243,7 @@ class CourseRegistrationService:
         await self.session.commit()
 
     async def list_my_courses(self, class_id: int, user_id: int) -> list[CourseRegistrationRead]:
+        """Return the active course registrations for an approved class member."""
         membership = await self._get_approved_membership_for_class(user_id, class_id)
         registrations = await self.registration_repository.list_active_for_membership(membership.id)
         return [CourseRegistrationRead.model_validate(registration) for registration in registrations]
@@ -251,6 +266,7 @@ class CourseRegistrationService:
             if existing.is_active:
                 return existing
 
+            # Reuse dropped registrations so one row preserves the student's registration history.
             return await self.registration_repository.reactivate(existing, datetime.now(timezone.utc))
 
         return await self.registration_repository.create(
