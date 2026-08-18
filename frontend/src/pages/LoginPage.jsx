@@ -3,7 +3,9 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 
 import { useAuth } from "../auth/useAuth.js";
 import Alert from "../components/Alert.jsx";
+import Button from "../components/Button.jsx";
 import FormField from "../components/FormField.jsx";
+import PageHeader from "../components/PageHeader.jsx";
 import { parseApiError } from "../utils/errors.js";
 
 const initialForm = {
@@ -48,20 +50,14 @@ function LoginPage() {
 
   return (
     <section className="mx-auto grid max-w-5xl gap-8 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
-      <div className="space-y-4">
-        <p className="text-sm font-semibold uppercase tracking-wide text-[#256f68]">
-          Welcome back
-        </p>
-        <h1 className="text-3xl font-bold text-[#172033] sm:text-4xl">
-          Sign in to ClassFlow
-        </h1>
-        <p className="max-w-xl text-base leading-7 text-[#566176]">
-          Continue with the account you registered in the ClassFlow backend.
-        </p>
-      </div>
+      <PageHeader
+        description="Continue with the account you registered in the ClassFlow backend."
+        eyebrow="Welcome back"
+        title="Sign in to ClassFlow"
+      />
 
       <form
-        className="rounded-md border border-[#dde4ef] bg-white p-5 shadow-sm sm:p-6"
+        className="cf-card p-5 sm:p-6"
         onSubmit={handleSubmit}
       >
         <div className="space-y-5">
@@ -94,19 +90,15 @@ function LoginPage() {
             value={form.password}
           />
 
-          <button
-            type="submit"
-            disabled={isSubmitting}
-            className="flex w-full items-center justify-center rounded-md bg-[#256f68] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#1f5d58] focus:outline-none focus:ring-2 focus:ring-[#256f68] focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-[#8ebbb5]"
-          >
+          <Button className="w-full" disabled={isSubmitting} type="submit" variant="primary">
             {isSubmitting ? "Signing in..." : "Log in"}
-          </button>
+          </Button>
 
-          <p className="text-center text-sm text-[#566176]">
+          <p className="text-center text-sm text-slate-500">
             Need an account?{" "}
             <Link
               to="/register"
-              className="font-semibold text-[#256f68] hover:text-[#1f5d58]"
+              className="font-semibold text-blue-700 hover:text-blue-900 cf-focus"
             >
               Register
             </Link>

@@ -1,11 +1,13 @@
 function Alert({ type = "error", title, message, items = [] }) {
-  const isError = type === "error";
-  const classes = isError
-    ? "border-[#f5b5b5] bg-[#fff1f1] text-[#7f1d1d]"
-    : "border-[#9ed8cb] bg-[#ecfdf7] text-[#14534a]";
+  const classes = {
+    error: "border-red-200 bg-red-50 text-red-700",
+    success: "border-emerald-200 bg-emerald-50 text-emerald-700",
+    warning: "border-amber-200 bg-amber-50 text-amber-800",
+    info: "border-slate-200 bg-white text-slate-700",
+  }[type] || "border-slate-200 bg-white text-slate-700";
 
   return (
-    <div className={`rounded-md border px-4 py-3 ${classes}`} role="alert">
+    <div className={`rounded-lg border px-4 py-3 ${classes}`} role="alert">
       {title ? <p className="text-sm font-semibold">{title}</p> : null}
       {message ? <p className="mt-1 text-sm">{message}</p> : null}
       {items.length > 0 ? (

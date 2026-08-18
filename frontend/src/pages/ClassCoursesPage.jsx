@@ -11,7 +11,9 @@ import {
   updateClassCourse,
 } from "../api/courses.js";
 import Alert from "../components/Alert.jsx";
+import Button from "../components/Button.jsx";
 import CheckboxField from "../components/CheckboxField.jsx";
+import ClassWorkspaceHeader from "../components/ClassWorkspaceHeader.jsx";
 import FormField from "../components/FormField.jsx";
 import LoadingScreen from "../components/LoadingScreen.jsx";
 import StatusBadge from "../components/StatusBadge.jsx";
@@ -63,17 +65,17 @@ function ClassCourseEditor({
   }
 
   return (
-    <div className="rounded-md border border-[#dde4ef] bg-white p-5 shadow-sm">
+    <div className="rounded-md border border-[#E2E8F0] bg-white p-5 shadow-sm">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
         <div>
-          <h2 className="text-lg font-semibold text-[#172033]">
+          <h2 className="text-lg font-semibold text-[#020617]">
             {classCourse.course.name}
           </h2>
-          <p className="mt-1 text-sm font-medium text-[#256f68]">
+          <p className="mt-1 text-sm font-medium text-[#2563EB]">
             {classCourse.course.code}
           </p>
           {classCourse.course.description ? (
-            <p className="mt-3 max-w-2xl text-sm leading-6 text-[#566176]">
+            <p className="mt-3 max-w-2xl text-sm leading-6 text-[#64748B]">
               {classCourse.course.description}
             </p>
           ) : null}
@@ -87,18 +89,18 @@ function ClassCourseEditor({
       {!canManage ? (
         <dl className="mt-5 grid gap-4 sm:grid-cols-2">
           <div>
-            <dt className="text-xs font-semibold uppercase tracking-wide text-[#667085]">
+            <dt className="text-xs font-semibold uppercase tracking-wide text-[#64748B]">
               Instructor
             </dt>
-            <dd className="mt-1 text-sm font-medium text-[#172033]">
+            <dd className="mt-1 text-sm font-medium text-[#020617]">
               {classCourse.instructor_name || "Not set"}
             </dd>
           </div>
           <div>
-            <dt className="text-xs font-semibold uppercase tracking-wide text-[#667085]">
+            <dt className="text-xs font-semibold uppercase tracking-wide text-[#64748B]">
               Type
             </dt>
-            <dd className="mt-1 text-sm font-medium text-[#172033]">
+            <dd className="mt-1 text-sm font-medium text-[#020617]">
               {classCourse.is_default ? "Default course" : "Optional course"}
             </dd>
           </div>
@@ -134,15 +136,15 @@ function ClassCourseEditor({
 
           <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
             {confirmDeleteId === classCourse.id ? (
-              <div className="flex flex-wrap items-center gap-2 rounded-md border border-[#f5b5b5] bg-[#fff8f8] p-2">
-                <span className="text-sm font-medium text-[#7f1d1d]">
+              <div className="flex flex-wrap items-center gap-2 rounded-md border border-[#FECACA] bg-[#FEF2F2] p-2">
+                <span className="text-sm font-medium text-[#B91C1C]">
                   Deactivate?
                 </span>
                 <button
                   type="button"
                   disabled={isBusy}
                   onClick={() => onDelete(classCourse.id)}
-                  className="rounded-md bg-[#b42318] px-3 py-1.5 text-sm font-semibold text-white transition hover:bg-[#971c14] focus:outline-none focus:ring-2 focus:ring-[#b42318] focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+                  className="rounded-md bg-[#DC2626] px-3 py-1.5 text-sm font-semibold text-white transition hover:bg-[#B91C1C] focus:outline-none focus:ring-2 focus:ring-[#DC2626] focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   {actionKey === `delete:${classCourse.id}` ? "Saving..." : "Yes"}
                 </button>
@@ -150,7 +152,7 @@ function ClassCourseEditor({
                   type="button"
                   disabled={isBusy}
                   onClick={() => setConfirmDeleteId(null)}
-                  className="rounded-md border border-[#cbd5e1] px-3 py-1.5 text-sm font-semibold text-[#344056] transition hover:bg-white focus:outline-none focus:ring-2 focus:ring-[#256f68] focus:ring-offset-2"
+                  className="rounded-md border border-[#E2E8F0] px-3 py-1.5 text-sm font-semibold text-[#475569] transition hover:bg-white focus:outline-none focus:ring-2 focus:ring-[#2563EB] focus:ring-offset-2"
                 >
                   Cancel
                 </button>
@@ -159,7 +161,7 @@ function ClassCourseEditor({
               <button
                 type="button"
                 onClick={() => setConfirmDeleteId(classCourse.id)}
-                className="rounded-md border border-[#f5b5b5] px-4 py-2 text-sm font-semibold text-[#7f1d1d] transition hover:bg-[#fff1f1] focus:outline-none focus:ring-2 focus:ring-[#b42318] focus:ring-offset-2"
+                className="rounded-md border border-[#FECACA] px-4 py-2 text-sm font-semibold text-[#B91C1C] transition hover:bg-[#FEF2F2] focus:outline-none focus:ring-2 focus:ring-[#DC2626] focus:ring-offset-2"
               >
                 Deactivate
               </button>
@@ -174,7 +176,7 @@ function ClassCourseEditor({
                   is_active: form.is_active,
                 })
               }
-              className="rounded-md bg-[#256f68] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#1f5d58] focus:outline-none focus:ring-2 focus:ring-[#256f68] focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-[#8ebbb5]"
+              className="rounded-md bg-[#2563EB] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#1D4ED8] focus:outline-none focus:ring-2 focus:ring-[#2563EB] focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-[#93C5FD]"
             >
               {actionKey === `update:${classCourse.id}` ? "Saving..." : "Save"}
             </button>
@@ -424,7 +426,7 @@ function ClassCoursesPage() {
         />
         <Link
           to="/classes"
-          className="inline-flex rounded-md bg-[#256f68] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#1f5d58] focus:outline-none focus:ring-2 focus:ring-[#256f68] focus:ring-offset-2"
+          className="inline-flex rounded-md bg-[#2563EB] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#1D4ED8] focus:outline-none focus:ring-2 focus:ring-[#2563EB] focus:ring-offset-2"
         >
           Back to classes
         </Link>
@@ -434,44 +436,26 @@ function ClassCoursesPage() {
 
   return (
     <section className="space-y-6">
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-        <div>
-          <p className="text-sm font-semibold uppercase tracking-wide text-[#256f68]">
-            Classroom courses
-          </p>
-          <h1 className="mt-2 text-3xl font-bold text-[#172033]">
-            {classroom?.name}
-          </h1>
-          <p className="mt-3 max-w-2xl text-base leading-7 text-[#566176]">
-            Manage catalogue courses attached to this classroom.
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <Link
-            to={`/classes/${numericClassId}`}
-            className="rounded-md border border-[#cbd5e1] px-4 py-2 text-sm font-semibold text-[#344056] transition hover:bg-white focus:outline-none focus:ring-2 focus:ring-[#256f68] focus:ring-offset-2"
-          >
-            Class details
+      <ClassWorkspaceHeader
+        actions={
+          <Link to={`/classes/${numericClassId}/my-courses`}>
+            <Button>My registrations</Button>
           </Link>
-          <Link
-            to={`/classes/${numericClassId}/my-courses`}
-            className="rounded-md border border-[#cbd5e1] px-4 py-2 text-sm font-semibold text-[#344056] transition hover:bg-white focus:outline-none focus:ring-2 focus:ring-[#256f68] focus:ring-offset-2"
-          >
-            My courses
-          </Link>
-        </div>
-      </div>
+        }
+        classroom={classroom}
+        membership={membership}
+      />
 
       {error ? (
         <Alert title="Course access blocked" message={error.message} items={error.items} />
       ) : null}
 
       {!canViewCourses ? (
-        <div className="rounded-md border border-[#f2cf82] bg-[#fffaf0] p-5">
-          <h2 className="text-lg font-semibold text-[#172033]">
+        <div className="rounded-md border border-[#FDE68A] bg-[#FFFBEB] p-5">
+          <h2 className="text-lg font-semibold text-[#020617]">
             Membership {membership?.status}
           </h2>
-          <p className="mt-2 text-sm leading-6 text-[#7a4b00]">
+          <p className="mt-2 text-sm leading-6 text-[#B45309]">
             Class courses are available after your membership is approved.
           </p>
         </div>
@@ -489,8 +473,8 @@ function ClassCoursesPage() {
           ) : null}
 
           {canManage ? (
-            <div className="rounded-md border border-[#dde4ef] bg-white p-5 shadow-sm sm:p-6">
-              <h2 className="text-lg font-semibold text-[#172033]">
+            <div className="rounded-md border border-[#E2E8F0] bg-white p-5 shadow-sm sm:p-6">
+              <h2 className="text-lg font-semibold text-[#020617]">
                 Add Catalogue Course
               </h2>
               <div className="mt-5 grid gap-6 lg:grid-cols-[1fr_1fr]">
@@ -510,7 +494,7 @@ function ClassCoursesPage() {
                       <button
                         type="submit"
                         disabled={isSearching}
-                        className="mt-6 rounded-md bg-[#256f68] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#1f5d58] focus:outline-none focus:ring-2 focus:ring-[#256f68] focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-[#8ebbb5] sm:self-start"
+                        className="mt-6 rounded-md bg-[#2563EB] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#1D4ED8] focus:outline-none focus:ring-2 focus:ring-[#2563EB] focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-[#93C5FD] sm:self-start"
                       >
                         {isSearching ? "Searching..." : "Search"}
                       </button>
@@ -519,7 +503,7 @@ function ClassCoursesPage() {
 
                   <div className="space-y-2">
                     {catalogueResults.length === 0 ? (
-                      <p className="rounded-md border border-dashed border-[#cbd5e1] p-4 text-sm text-[#566176]">
+                      <p className="rounded-md border border-dashed border-[#E2E8F0] p-4 text-sm text-[#64748B]">
                         Search for an existing course first.
                       </p>
                     ) : (
@@ -528,17 +512,17 @@ function ClassCoursesPage() {
                           type="button"
                           key={course.id}
                           onClick={() => setSelectedCourse(course)}
-                          className={`w-full rounded-md border p-3 text-left transition focus:outline-none focus:ring-2 focus:ring-[#256f68] focus:ring-offset-2 ${
+                          className={`w-full rounded-md border p-3 text-left transition focus:outline-none focus:ring-2 focus:ring-[#2563EB] focus:ring-offset-2 ${
                             selectedCourse?.id === course.id
-                              ? "border-[#256f68] bg-[#ecfdf7]"
-                              : "border-[#dde4ef] hover:border-[#aac7c2]"
+                              ? "border-[#2563EB] bg-[#EFF6FF]"
+                              : "border-[#E2E8F0] hover:border-[#BFDBFE]"
                           }`}
                         >
-                          <span className="block text-sm font-semibold text-[#172033]">
+                          <span className="block text-sm font-semibold text-[#020617]">
                             {formatCourseTitle(course)}
                           </span>
                           {course.description ? (
-                            <span className="mt-1 block text-sm text-[#566176]">
+                            <span className="mt-1 block text-sm text-[#64748B]">
                               {course.description}
                             </span>
                           ) : null}
@@ -550,11 +534,11 @@ function ClassCoursesPage() {
 
                 <div className="space-y-5">
                   <form className="space-y-4" onSubmit={handleAttach}>
-                    <div className="rounded-md border border-[#dde4ef] bg-[#f8fafc] p-4">
-                      <p className="text-sm font-semibold text-[#172033]">
+                    <div className="rounded-md border border-[#E2E8F0] bg-[#f8fafc] p-4">
+                      <p className="text-sm font-semibold text-[#020617]">
                         Selected course
                       </p>
-                      <p className="mt-1 text-sm text-[#566176]">
+                      <p className="mt-1 text-sm text-[#64748B]">
                         {selectedCourse
                           ? formatCourseTitle(selectedCourse)
                           : "No course selected"}
@@ -579,7 +563,7 @@ function ClassCoursesPage() {
                     <button
                       type="submit"
                       disabled={isAttaching}
-                      className="inline-flex w-full items-center justify-center rounded-md bg-[#256f68] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[#1f5d58] focus:outline-none focus:ring-2 focus:ring-[#256f68] focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-[#8ebbb5]"
+                      className="inline-flex w-full items-center justify-center rounded-md bg-[#2563EB] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[#1D4ED8] focus:outline-none focus:ring-2 focus:ring-[#2563EB] focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-[#93C5FD]"
                     >
                       {isAttaching ? "Adding..." : "Add to class"}
                     </button>
@@ -589,7 +573,7 @@ function ClassCoursesPage() {
                     className="space-y-4 border-t border-[#e5eaf2] pt-5"
                     onSubmit={handleCreateCourse}
                   >
-                    <h3 className="text-base font-semibold text-[#172033]">
+                    <h3 className="text-base font-semibold text-[#020617]">
                       Create missing catalogue course
                     </h3>
                     <FormField
@@ -616,12 +600,12 @@ function ClassCoursesPage() {
                       value={courseForm.description}
                     />
                     {!hasSearchedCatalogue ? (
-                      <p className="rounded-md border border-[#f2cf82] bg-[#fffaf0] p-3 text-sm text-[#7a4b00]">
+                      <p className="rounded-md border border-[#FDE68A] bg-[#FFFBEB] p-3 text-sm text-[#B45309]">
                         Search the catalogue before creating a missing course.
                       </p>
                     ) : null}
                     {hasSearchedCatalogue && catalogueResults.length > 0 ? (
-                      <p className="rounded-md border border-[#f2cf82] bg-[#fffaf0] p-3 text-sm text-[#7a4b00]">
+                      <p className="rounded-md border border-[#FDE68A] bg-[#FFFBEB] p-3 text-sm text-[#B45309]">
                         Select one of the matching catalogue courses above, or
                         refine the search until no existing course matches.
                       </p>
@@ -633,7 +617,7 @@ function ClassCoursesPage() {
                         !hasSearchedCatalogue ||
                         catalogueResults.length > 0
                       }
-                      className="inline-flex w-full items-center justify-center rounded-md border border-[#cbd5e1] px-5 py-2.5 text-sm font-semibold text-[#344056] transition hover:border-[#8ea0b8] hover:bg-[#f8fafc] focus:outline-none focus:ring-2 focus:ring-[#256f68] focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+                      className="inline-flex w-full items-center justify-center rounded-md border border-[#E2E8F0] px-5 py-2.5 text-sm font-semibold text-[#475569] transition hover:border-[#8ea0b8] hover:bg-[#f8fafc] focus:outline-none focus:ring-2 focus:ring-[#2563EB] focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
                     >
                       {isCreating ? "Creating..." : "Create and select"}
                     </button>
@@ -645,16 +629,16 @@ function ClassCoursesPage() {
 
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-[#172033]">
+              <h2 className="text-lg font-semibold text-[#020617]">
                 Class Course List
               </h2>
-              <span className="text-sm font-medium text-[#566176]">
+              <span className="text-sm font-medium text-[#64748B]">
                 {classCourses.length} courses
               </span>
             </div>
 
             {classCourses.length === 0 ? (
-              <p className="rounded-md border border-dashed border-[#cbd5e1] bg-white p-5 text-sm text-[#566176]">
+              <p className="rounded-md border border-dashed border-[#E2E8F0] bg-white p-5 text-sm text-[#64748B]">
                 No courses have been added to this class yet.
               </p>
             ) : (

@@ -14,10 +14,10 @@ import {
 } from "../api/memberships.js";
 import { useAuth } from "../auth/useAuth.js";
 import Alert from "../components/Alert.jsx";
+import ClassWorkspaceHeader from "../components/ClassWorkspaceHeader.jsx";
 import LoadingScreen from "../components/LoadingScreen.jsx";
 import StatusBadge from "../components/StatusBadge.jsx";
 import {
-  formatClassTitle,
   isApproved,
   isRepresentative,
 } from "../utils/classrooms.js";
@@ -34,10 +34,10 @@ function formatDate(value) {
 function SummaryItem({ label, value }) {
   return (
     <div>
-      <dt className="text-xs font-semibold uppercase tracking-wide text-[#667085]">
+      <dt className="text-xs font-semibold uppercase tracking-wide text-[#64748B]">
         {label}
       </dt>
-      <dd className="mt-1 text-sm font-medium text-[#172033]">{value}</dd>
+      <dd className="mt-1 text-sm font-medium text-[#020617]">{value}</dd>
     </div>
   );
 }
@@ -92,7 +92,7 @@ function MembershipRow({
             type="button"
             disabled={isBusy}
             onClick={() => onApprove(membership.id)}
-            className="rounded-md bg-[#256f68] px-3 py-2 text-sm font-semibold text-white transition hover:bg-[#1f5d58] focus:outline-none focus:ring-2 focus:ring-[#256f68] focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-[#8ebbb5]"
+            className="rounded-md bg-[#2563EB] px-3 py-2 text-sm font-semibold text-white transition hover:bg-[#1D4ED8] focus:outline-none focus:ring-2 focus:ring-[#2563EB] focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-[#93C5FD]"
           >
             {actionKey === `approve:${membership.id}` ? "Approving..." : "Approve"}
           </button>
@@ -100,7 +100,7 @@ function MembershipRow({
             type="button"
             disabled={isBusy}
             onClick={() => onReject(membership.id)}
-            className="rounded-md border border-[#f5b5b5] px-3 py-2 text-sm font-semibold text-[#7f1d1d] transition hover:bg-[#fff1f1] focus:outline-none focus:ring-2 focus:ring-[#b42318] focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+            className="rounded-md border border-[#FECACA] px-3 py-2 text-sm font-semibold text-[#B91C1C] transition hover:bg-[#FEF2F2] focus:outline-none focus:ring-2 focus:ring-[#DC2626] focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
           >
             {actionKey === `reject:${membership.id}` ? "Rejecting..." : "Reject"}
           </button>
@@ -110,13 +110,13 @@ function MembershipRow({
       {canRemove ? (
         <div className="lg:justify-self-end">
           {confirmRemovalId === membership.id ? (
-            <div className="flex flex-wrap items-center gap-2 rounded-md border border-[#f5b5b5] bg-[#fff8f8] p-2">
-              <span className="text-sm font-medium text-[#7f1d1d]">Remove?</span>
+            <div className="flex flex-wrap items-center gap-2 rounded-md border border-[#FECACA] bg-[#FEF2F2] p-2">
+              <span className="text-sm font-medium text-[#B91C1C]">Remove?</span>
               <button
                 type="button"
                 disabled={isBusy}
                 onClick={() => onConfirmRemove(membership.id)}
-                className="rounded-md bg-[#b42318] px-3 py-1.5 text-sm font-semibold text-white transition hover:bg-[#971c14] focus:outline-none focus:ring-2 focus:ring-[#b42318] focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+                className="rounded-md bg-[#DC2626] px-3 py-1.5 text-sm font-semibold text-white transition hover:bg-[#B91C1C] focus:outline-none focus:ring-2 focus:ring-[#DC2626] focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {actionKey === `remove:${membership.id}` ? "Removing..." : "Yes"}
               </button>
@@ -124,7 +124,7 @@ function MembershipRow({
                 type="button"
                 disabled={isBusy}
                 onClick={onCancelRemove}
-                className="rounded-md border border-[#cbd5e1] px-3 py-1.5 text-sm font-semibold text-[#344056] transition hover:bg-white focus:outline-none focus:ring-2 focus:ring-[#256f68] focus:ring-offset-2"
+                className="rounded-md border border-[#E2E8F0] px-3 py-1.5 text-sm font-semibold text-[#475569] transition hover:bg-white focus:outline-none focus:ring-2 focus:ring-[#2563EB] focus:ring-offset-2"
               >
                 Cancel
               </button>
@@ -133,7 +133,7 @@ function MembershipRow({
             <button
               type="button"
               onClick={() => onRemovePrompt(membership.id)}
-              className="rounded-md border border-[#f5b5b5] px-3 py-2 text-sm font-semibold text-[#7f1d1d] transition hover:bg-[#fff1f1] focus:outline-none focus:ring-2 focus:ring-[#b42318] focus:ring-offset-2"
+              className="rounded-md border border-[#FECACA] px-3 py-2 text-sm font-semibold text-[#B91C1C] transition hover:bg-[#FEF2F2] focus:outline-none focus:ring-2 focus:ring-[#DC2626] focus:ring-offset-2"
             >
               Remove
             </button>
@@ -182,7 +182,7 @@ function ClassDetailsPage() {
         setRequests([]);
         setError({
           message:
-            "This class is not in your memberships. Request access before opening class details.",
+            "This class is not in your memberships. Request access before opening members.",
           items: [],
         });
         return;
@@ -244,7 +244,7 @@ function ClassDetailsPage() {
   }
 
   if (isLoading) {
-    return <LoadingScreen message="Loading class details..." />;
+    return <LoadingScreen message="Loading members..." />;
   }
 
   if (error && !classroom) {
@@ -253,7 +253,7 @@ function ClassDetailsPage() {
         <Alert title="Could not load class" message={error.message} items={error.items} />
         <Link
           to="/classes/join"
-          className="inline-flex rounded-md bg-[#256f68] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#1f5d58] focus:outline-none focus:ring-2 focus:ring-[#256f68] focus:ring-offset-2"
+          className="inline-flex rounded-md bg-[#2563EB] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#1D4ED8] focus:outline-none focus:ring-2 focus:ring-[#2563EB] focus:ring-offset-2"
         >
           Request membership
         </Link>
@@ -263,72 +263,24 @@ function ClassDetailsPage() {
 
   return (
     <section className="space-y-6">
-      <div className="rounded-md border border-[#dde4ef] bg-white p-5 shadow-sm sm:p-6">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-          <div>
-            <p className="text-sm font-semibold uppercase tracking-wide text-[#256f68]">
-              Class details
-            </p>
-            <h1 className="mt-2 text-3xl font-bold text-[#172033]">
-              {classroom.name}
-            </h1>
-            <p className="mt-3 max-w-2xl text-base leading-7 text-[#566176]">
-              {classroom.description || formatClassTitle(classroom)}
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <StatusBadge value={membership?.role} />
-            <StatusBadge value={membership?.status} />
-          </div>
-        </div>
-
-        <dl className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <SummaryItem label="Class ID" value={classroom.id} />
-          <SummaryItem label="Semester" value={classroom.semester} />
-          <SummaryItem label="Section" value={classroom.section} />
-          <SummaryItem
-            label="Requested"
-            value={formatDate(membership?.requested_at)}
-          />
-          {canManageMembers ? (
-            <SummaryItem label="Join code" value={classroom.join_code} />
-          ) : null}
-        </dl>
-
-        {isApproved(membership) ? (
-          <div className="mt-6 flex flex-wrap gap-2 border-t border-[#e5eaf2] pt-5">
-            <Link
-              to={`/classes/${numericClassId}/courses`}
-              className="rounded-md bg-[#256f68] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#1f5d58] focus:outline-none focus:ring-2 focus:ring-[#256f68] focus:ring-offset-2"
-            >
-              Class courses
-            </Link>
-            <Link
-              to={`/classes/${numericClassId}/my-courses`}
-              className="rounded-md border border-[#cbd5e1] px-4 py-2 text-sm font-semibold text-[#344056] transition hover:bg-white focus:outline-none focus:ring-2 focus:ring-[#256f68] focus:ring-offset-2"
-            >
-              My courses
-            </Link>
-          </div>
-        ) : null}
-      </div>
+      <ClassWorkspaceHeader classroom={classroom} membership={membership} />
 
       {error ? (
         <Alert title="Class action blocked" message={error.message} items={error.items} />
       ) : null}
 
       {!isApproved(membership) ? (
-        <div className="rounded-md border border-[#f2cf82] bg-[#fffaf0] p-5">
-          <h2 className="text-lg font-semibold text-[#172033]">
+        <div className="rounded-md border border-[#FDE68A] bg-[#FFFBEB] p-5">
+          <h2 className="text-lg font-semibold text-[#020617]">
             Membership {membership?.status}
           </h2>
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-[#7a4b00]">
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-[#B45309]">
             Protected class content is available only after your membership is
             approved by a class representative.
           </p>
           <Link
             to="/classes"
-            className="mt-4 inline-flex rounded-md border border-[#e3bc67] px-4 py-2 text-sm font-semibold text-[#7a4b00] transition hover:bg-white focus:outline-none focus:ring-2 focus:ring-[#ad7815] focus:ring-offset-2"
+            className="mt-4 inline-flex rounded-md border border-[#FDE68A] px-4 py-2 text-sm font-semibold text-[#B45309] transition hover:bg-white focus:outline-none focus:ring-2 focus:ring-[#D97706] focus:ring-offset-2"
           >
             Back to My Classes
           </Link>
@@ -347,23 +299,23 @@ function ClassDetailsPage() {
           ) : null}
 
           {canManageMembers ? (
-            <div className="rounded-md border border-[#dde4ef] bg-white p-5 shadow-sm sm:p-6">
+            <div className="rounded-md border border-[#E2E8F0] bg-white p-5 shadow-sm sm:p-6">
               <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                  <h2 className="text-lg font-semibold text-[#172033]">
+                  <h2 className="text-lg font-semibold text-[#020617]">
                     Membership Requests
                   </h2>
-                  <p className="mt-1 text-sm text-[#566176]">
+                  <p className="mt-1 text-sm text-[#64748B]">
                     Pending requests for this class.
                   </p>
                 </div>
-                <span className="text-sm font-medium text-[#566176]">
+                <span className="text-sm font-medium text-[#64748B]">
                   {requests.length} pending
                 </span>
               </div>
 
               {requests.length === 0 ? (
-                <p className="mt-5 rounded-md border border-dashed border-[#cbd5e1] p-4 text-sm text-[#566176]">
+                <p className="mt-5 rounded-md border border-dashed border-[#E2E8F0] p-4 text-sm text-[#64748B]">
                   No pending membership requests.
                 </p>
               ) : (
@@ -395,23 +347,23 @@ function ClassDetailsPage() {
             </div>
           ) : null}
 
-          <div className="rounded-md border border-[#dde4ef] bg-white p-5 shadow-sm sm:p-6">
+          <div className="rounded-md border border-[#E2E8F0] bg-white p-5 shadow-sm sm:p-6">
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <h2 className="text-lg font-semibold text-[#172033]">
+                <h2 className="text-lg font-semibold text-[#020617]">
                   Approved Members
                 </h2>
-                <p className="mt-1 text-sm text-[#566176]">
+                <p className="mt-1 text-sm text-[#64748B]">
                   Current approved membership list.
                 </p>
               </div>
-              <span className="text-sm font-medium text-[#566176]">
+              <span className="text-sm font-medium text-[#64748B]">
                 {members.length} approved
               </span>
             </div>
 
             {members.length === 0 ? (
-              <p className="mt-5 rounded-md border border-dashed border-[#cbd5e1] p-4 text-sm text-[#566176]">
+              <p className="mt-5 rounded-md border border-dashed border-[#E2E8F0] p-4 text-sm text-[#64748B]">
                 No approved members were returned by the backend.
               </p>
             ) : (

@@ -3,7 +3,9 @@ import { Link, useNavigate } from "react-router-dom";
 
 import { createClassroom } from "../api/classrooms.js";
 import Alert from "../components/Alert.jsx";
+import Button from "../components/Button.jsx";
 import FormField from "../components/FormField.jsx";
+import PageHeader from "../components/PageHeader.jsx";
 import TextAreaField from "../components/TextAreaField.jsx";
 import { parseApiError } from "../utils/errors.js";
 
@@ -62,20 +64,14 @@ function CreateClassPage() {
 
   return (
     <section className="mx-auto max-w-4xl space-y-6">
-      <div>
-        <p className="text-sm font-semibold uppercase tracking-wide text-[#256f68]">
-          New class
-        </p>
-        <h1 className="mt-2 text-3xl font-bold text-[#172033]">
-          Create Class
-        </h1>
-        <p className="mt-3 max-w-2xl text-base leading-7 text-[#566176]">
-          Creating a class makes you its approved representative.
-        </p>
-      </div>
+      <PageHeader
+        description="Creating a class makes you its approved representative."
+        eyebrow="New class"
+        title="Create Class"
+      />
 
       <form
-        className="rounded-md border border-[#dde4ef] bg-white p-5 shadow-sm sm:p-6"
+        className="cf-card p-5 sm:p-6"
         onSubmit={handleSubmit}
       >
         <div className="space-y-5">
@@ -135,17 +131,13 @@ function CreateClassPage() {
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <Link
               to="/classes"
-              className="text-sm font-semibold text-[#256f68] hover:text-[#1f5d58]"
+              className="text-sm font-semibold text-blue-700 hover:text-blue-900 cf-focus"
             >
               Back to classes
             </Link>
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="inline-flex items-center justify-center rounded-md bg-[#256f68] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[#1f5d58] focus:outline-none focus:ring-2 focus:ring-[#256f68] focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-[#8ebbb5]"
-            >
+            <Button disabled={isSubmitting} type="submit" variant="primary">
               {isSubmitting ? "Creating class..." : "Create class"}
-            </button>
+            </Button>
           </div>
         </div>
       </form>
