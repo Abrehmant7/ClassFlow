@@ -1,10 +1,10 @@
 # ClassFlow Knowledge Base
 
-Last updated: 2026-07-30
+Last updated: 2026-08-11
 
 ## Project Goal
 
-ClassFlow is a FastAPI and PostgreSQL backend for class-based academic coordination. The main product will support users, classrooms, memberships, courses, shared tasks, private tasks, announcements, resources, notifications, dashboards, and a future class-scoped RAG chatbot.
+ClassFlow is a FastAPI and PostgreSQL backend for class-based academic coordination. The main product will support users, classrooms, memberships, courses, shared tasks, personal tasks, announcements, resources, notifications, dashboards, and a future class-scoped RAG chatbot.
 
 The project should be built in phases. The most important early milestone is a working non-AI MVP: authentication, classrooms, memberships, courses, tasks, and personalized feed.
 
@@ -46,6 +46,13 @@ Structure decision:
 - Models map database tables.
 - `ai/` is isolated so future RAG retrieval can stay class-scoped and permission-aware.
 
+Documentation convention:
+- Repositories should usually avoid docstrings; method names should explain the query.
+- Services should use short docstrings for public methods that encode business rules.
+- Services may use brief comments for transaction boundaries, edge cases, or non-obvious product rules.
+- Routes should usually avoid comments because endpoint names, schemas, and dependencies should explain the behavior.
+- `docs/knowledge-base.md` should store module behavior, product decisions, endpoint lists, smoke flows, and cross-module rules.
+
 ## Environment Settings
 
 App settings use the `CLASSFLOW_` prefix to avoid collisions with global environment variables.
@@ -77,6 +84,7 @@ Current migrations:
 ac57ddd31bea_create_users_table.py
 f29de09fc869_create_refresh_tokens_table.py
 85d87d97c121_create_classrooms_and_class_memberships.py
+00f7fc38ba77_create_courses_and_course_registrations.py
 ```
 
 Useful commands:
@@ -271,6 +279,105 @@ Swagger testing notes:
 - Use User A's token when calling representative-only endpoints.
 - Switch back to User B's token to confirm approved-member access works but representative access fails.
 
+## Module 3 Status - Courses And Registrations
+
+Implemented:
+- `courses` table for the global course catalogue
+- `class_courses` table for attaching catalogue courses to classrooms
+- `course_registrations` table for student registrations
+- Case-insensitive unique course name index through `LOWER(name)`
+- Unique course code constraint
+- Unique classroom/course constraint to prevent adding the same course twice to one class
+- Unique membership/class-course registration constraint
+- Course name normalization before saving
+- Course code normalization before saving
+- Searchable global course catalogue
+- Class-scoped course management
+- Default and optional class courses
+- Student course registration, drop, and re-registration
+- Automatic registration in default courses when a membership is approved
+- Automatic registration of existing approved members when a representative adds a new default course
+
+Current course catalogue endpoints:
+
+```text
+GET  /api/v1/courses
+GET  /api/v1/courses/{course_id}
+POST /api/v1/courses
+```
+
+Current class course endpoints:
+
+```text
+POST   /api/v1/classes/{class_id}/courses
+GET    /api/v1/classes/{class_id}/courses
+PATCH  /api/v1/class-courses/{class_course_id}
+DELETE /api/v1/class-courses/{class_course_id}
+```
+
+Current course registration endpoints:
+
+```text
+POST   /api/v1/class-courses/{class_course_id}/register
+DELETE /api/v1/class-courses/{class_course_id}/register
+GET    /api/v1/classes/{class_id}/my-courses
+```
+
+Module 3 behavior:
+- `GET /courses` supports optional search with `?search=database`.
+- `POST /courses` requires the user to be an approved representative in at least one class.
+- `POST /courses` rejects duplicate course codes and duplicate normalized course names.
+- Course codes are stored uppercase with surrounding whitespace removed.
+- Course names are stored with repeated whitespace collapsed.
+- Representatives manage class courses only for classrooms where they are approved representatives.
+- Approved class members can list class courses and their own registered courses.
+- Pending members cannot register for courses.
+- Students cannot add, update, or remove class courses.
+- A membership from one classroom cannot register for a course attached to another classroom.
+- Default courses mean auto-registered courses, not mandatory courses.
+- Students can drop and re-register default courses the same way they can drop and re-register optional courses.
+- Deleting a class course soft-removes it by setting `is_active=False`.
+- Dropping a course registration sets `is_active=False` and stores `dropped_at`.
+- Re-registering an already dropped course reactivates the existing registration instead of creating a duplicate row.
+
+Important Module 3 files:
+
+```text
+app/models/course.py
+app/schemas/course.py
+app/repositories/course.py
+app/services/course.py
+app/api/routes/courses.py
+app/api/routes/class_courses.py
+app/repositories/membership.py
+app/services/classroom.py
+app/api/router.py
+```
+
+Manual Module 3 smoke flow:
+
+```text
+Representative searches the global catalogue.
+Representative creates a missing catalogue course.
+Representative adds default and optional courses to a class.
+Student requests to join the class.
+Representative approves the student's membership.
+Default course registration is created automatically.
+Student lists their class courses.
+Student registers for an optional course.
+Student drops the optional course.
+Student re-registers for the optional course.
+```
+
+Module 3 verification notes:
+- Duplicate catalogue course code should return `409`.
+- Duplicate normalized course name should return `409`.
+- Adding the same course twice to one classroom should return `409` while active.
+- Pending members should receive `403` for registration.
+- Students should receive `403` for class-course management endpoints.
+- Cross-class registration should receive `403`.
+- If Swagger shows `relation "courses" does not exist`, run `alembic upgrade head` and confirm `alembic current` shows the Module 3 migration.
+
 ## Verification Already Performed
 
 Module 1 smoke flow passed:
@@ -294,48 +401,125 @@ Pytest passed:
 Alembic current head:
 
 ```text
-85d87d97c121
+00f7fc38ba77
 ```
+
+## Module 4 Backend Status - Tasks, Progress And Attachments
+
+Implemented backend behavior:
+- Shared tasks created and managed by approved class representatives.
+- Personal tasks created, updated, completed, reopened, archived, and manually deleted by their creator only.
+- Personal tasks may have no class, may be linked to a classroom, or may be linked to a registered class course.
+- Shared-task progress stored per approved member through `task_progress`; missing progress rows mean pending.
+- Supporting task attachments stored by internal `storage_key`, with download routed through permission-checked API endpoints.
+- Attachment upload validates extension, content type, size, empty files, and path traversal.
+- Attachment storage failures do not create database records.
+- Database failures after file storage remove the uploaded file.
+
+Current task endpoints:
+
+```text
+POST   /api/v1/classes/{class_id}/tasks
+GET    /api/v1/classes/{class_id}/tasks
+POST   /api/v1/tasks
+GET    /api/v1/tasks
+GET    /api/v1/tasks/{task_id}
+PATCH  /api/v1/tasks/{task_id}
+DELETE /api/v1/tasks/{task_id}
+PUT    /api/v1/tasks/{task_id}/progress
+POST   /api/v1/tasks/{task_id}/attachments
+GET    /api/v1/tasks/{task_id}/attachments
+GET    /api/v1/attachments/{attachment_id}/download
+DELETE /api/v1/attachments/{attachment_id}
+```
+
+Important Module 4 backend files:
+
+```text
+app/models/task.py
+app/schemas/task.py
+app/repositories/task.py
+app/services/task.py
+app/api/routes/tasks.py
+app/database/migrations/versions/f2659f4668ac_create_tasks_progress_and_attachments.py
+app/database/migrations/versions/b7428b2d4f91_make_personal_tasks_classroom_optional.py
+```
+
+Module 4 visibility and management rules:
+- Approved representatives can view and manage all shared tasks in their classroom.
+- Representatives cannot view another user's personal task.
+- Students can view shared class-wide tasks for classes where they are approved members.
+- Students can view shared course tasks only when they have an active registration for that class course.
+- Personal tasks are visible and manageable only by their creator.
+- Completing a personal task sets `status=completed` and `completed_at`; it does not delete the task.
+- Shared tasks cannot be marked completed directly; students complete them through progress.
+- Cancelled and archived shared tasks cannot receive progress updates.
+- Only personal tasks can be hard-deleted.
+- Shared attachments can be managed by approved representatives only.
+- Personal attachments can be managed by the personal-task creator only.
+- Anyone who can view the task can list or download its attachments.
 
 ## Next Recommended Module
 
-Module 3 - Courses.
+Module 5 - Personalized Feed, Filtering And Search.
 
-Recommended implementation order:
+Implemented backend behavior:
+- `GET /api/v1/feed` returns the authenticated user's authorized academic feed.
+- `GET /api/v1/feed/summary` returns dashboard summary counts using the same visibility and completion rules.
+- `GET /api/v1/feed/filter-options` returns approved classrooms and active registered courses for filters.
+- `POST /api/v1/personal-tasks` creates personal tasks without accepting visibility or ownership from the client.
+- `PUT /api/v1/personal-tasks/{task_id}/complete` completes a personal task without deleting it.
+- `PUT /api/v1/personal-tasks/{task_id}/reopen` reopens a personal task and clears `completed_at`.
+- Feed inclusion is query-based; no feed table/model is stored.
+- Personal tasks are included only for their creator.
+- Shared class-wide tasks are included for approved class members.
+- Shared course tasks are included only for active course registrations.
+- Representatives do not receive every shared course task in their personal feed unless they are also registered.
+- Feed items expose normalized `my_completion_status` and lifecycle `task_status`.
+- Feed items derive `is_overdue`, `due_group`, `context_type`, permissions, context, creator, and attachment count.
+- Feed supports pagination, view filtering, visibility filtering, classroom/course filters, task type, priority, due filters, and authorization-safe search.
+- Search trims the term, limits it to 100 characters, and uses database-side case-insensitive matching across task, classroom, and course fields.
+- Feed ordering groups overdue, today, upcoming, later, no-deadline, and completed records with priority and stable ID tie-breakers.
+- Summary counts overdue, due today, upcoming seven days, no deadline, and completed this week.
+- IANA timezones are accepted for feed and summary date boundaries; UTC is the fallback.
 
-```text
-models
-migration
-schemas
-repositories
-services
-permission dependencies
-routes
-tests
-manual Swagger checks
-```
-
-Module 3 should build on Module 2 permissions. Course creation and management should be class-scoped and should use the existing membership dependencies:
-
-```text
-get_approved_membership()
-require_representative()
-```
-
-Do not create course behavior that bypasses classroom membership checks. Class content should require approved membership, and representative-only course actions should require `require_representative()`.
-
-Likely next tables:
+Current feed endpoints:
 
 ```text
-courses
+GET /api/v1/feed
+GET /api/v1/feed/summary
+GET /api/v1/feed/filter-options
+POST /api/v1/personal-tasks
+PUT /api/v1/personal-tasks/{task_id}/complete
+PUT /api/v1/personal-tasks/{task_id}/reopen
 ```
 
-Likely next endpoints:
+Supported query parameters:
 
 ```text
-POST   /classes/{class_id}/courses
-GET    /classes/{class_id}/courses
-GET    /courses/{course_id}
-PATCH  /courses/{course_id}
-DELETE /courses/{course_id}
+view=active|completed|archived|all
+visibility=all|personal|shared
+classroom_id=<id>
+class_course_id=<id>
+task_type=assignment|quiz|lab|project|presentation|exam|other
+priority=low|medium|high|urgent
+due=overdue|today|week|later|no_deadline
+search=<term>
+timezone=UTC
+page=1
+page_size=20
 ```
+
+Important Module 5 backend files so far:
+
+```text
+app/schemas/feed.py
+app/repositories/feed.py
+app/services/feed.py
+app/api/routes/feed.py
+tests/test_feed.py
+```
+
+Remaining Module 5 work:
+- Backend test expansion for feed summary/filter options and personal-task action endpoints.
+- Frontend personal-feed dashboard, filters, cards, quick-add, and summary cards.
