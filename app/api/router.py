@@ -7,6 +7,7 @@ from app.api.routes import (
     classes,
     courses,
     dashboard,
+    feed,
     health,
     memberships,
     notifications,
