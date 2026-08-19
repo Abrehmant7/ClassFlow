@@ -42,3 +42,11 @@ def decode_access_token(token: str) -> dict:
         return jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.JWT_ALGORITHM])
     except InvalidTokenError as exc:
         raise ValueError("Invalid token") from exc
+
+
+def create_password_reset_token() -> str:
+    return secrets.token_urlsafe(64)
+
+
+def hash_password_reset_token(token: str) -> str:
+    return sha256(token.encode("utf-8")).hexdigest()

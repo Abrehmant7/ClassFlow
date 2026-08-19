@@ -8,6 +8,7 @@ from app.database.session import get_db_session
 from app.models.user import User
 from app.repositories.user import UserRepository
 from app.schemas.user import UserRead, UserUpdate
+from app.services.user import UserService
 
 router = APIRouter(prefix="/users", tags=["users"])
 
@@ -25,4 +26,4 @@ async def update_current_user(
     current_user: Annotated[User, Depends(get_current_user)],
     session: Annotated[AsyncSession, Depends(get_db_session)],
 ) -> UserRead:
-    return await UserRepository(session).update(current_user, user_in)
+    return await UserService(UserRepository(session)).update_profile(current_user, user_in)
