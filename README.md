@@ -15,6 +15,7 @@ Backend:
 - Shared classroom/course tasks
 - Personal academic tasks with optional class/course context
 - Per-student task progress for shared tasks
+- Dropped class-course tasks are hidden rather than automatically closed
 - Task attachments with file validation and permission checks
 - Personal feed with summary counts, filtering, pagination, due grouping, and search
 
@@ -151,8 +152,8 @@ PUT    /api/v1/personal-tasks/{task_id}/complete
 PUT    /api/v1/personal-tasks/{task_id}/reopen
 POST   /api/v1/tasks/{task_id}/attachments
 GET    /api/v1/tasks/{task_id}/attachments
-GET    /api/v1/task-attachments/{attachment_id}/download
-DELETE /api/v1/task-attachments/{attachment_id}
+GET    /api/v1/attachments/{attachment_id}/download
+DELETE /api/v1/attachments/{attachment_id}
 ```
 
 Feed:
@@ -175,6 +176,8 @@ Important migration commands:
 ```
 
 Personal tasks require the latest task migration because `tasks.classroom_id` must be nullable for independent personal tasks.
+
+Dropped/deactivated class courses do not mutate linked task status. Course-linked tasks disappear from task lists, feed queries, summaries, and direct task reads while the class course is inactive.
 
 ## Testing
 

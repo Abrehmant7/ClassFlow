@@ -3,7 +3,7 @@ from datetime import datetime
 from sqlalchemy import and_, or_, select
 from sqlalchemy.orm import selectinload
 
-from app.models.classroom import CLASS_ROLE_REPRESENTATIVE, MEMBERSHIP_STATUS_APPROVED, ClassMembership
+from app.models.classroom import MEMBERSHIP_STATUS_APPROVED, ClassMembership
 from app.models.course import ClassCourse, CourseRegistration
 from app.models.task import (
     TASK_STATUS_ACTIVE,
@@ -68,32 +68,39 @@ class TaskRepository(BaseRepository[Task]):
         if not include_closed:
             statement = statement.where(Task.status == TASK_STATUS_ACTIVE)
 
+        registered_course_ids = (
+            select(CourseRegistration.class_course_id)
+            .join(ClassCourse, ClassCourse.id == CourseRegistration.class_course_id)
+            .where(
+                CourseRegistration.membership_id == membership_id,
+                CourseRegistration.is_active.is_(True),
+                ClassCourse.is_active.is_(True),
+            )
+        )
+        active_course_task = self._active_class_course_task_condition()
+
         if is_representative:
             # Representatives can manage shared tasks, but personal tasks still remain creator-only.
             statement = statement.where(
                 or_(
-                    Task.visibility == TASK_VISIBILITY_SHARED,
+                    and_(
+                        Task.visibility == TASK_VISIBILITY_SHARED,
+                        active_course_task,
+                    ),
                     and_(
                         Task.visibility == TASK_VISIBILITY_PERSONAL,
                         Task.created_by_user_id == user_id,
+                        active_course_task,
                     ),
                 )
             )
         else:
-            # Course-linked shared tasks are visible only to actively registered members.
-            registered_course_ids = (
-                select(CourseRegistration.class_course_id)
-                .where(
-                    CourseRegistration.membership_id == membership_id,
-                    CourseRegistration.is_active.is_(True),
-                )
-            )
-
             statement = statement.where(
                 or_(
                     and_(
                         Task.visibility == TASK_VISIBILITY_PERSONAL,
                         Task.created_by_user_id == user_id,
+                        active_course_task,
                     ),
                     and_(
                         Task.visibility == TASK_VISIBILITY_SHARED,
@@ -102,6 +109,7 @@ class TaskRepository(BaseRepository[Task]):
                     and_(
                         Task.visibility == TASK_VISIBILITY_SHARED,
                         Task.class_course_id.in_(registered_course_ids),
+                        active_course_task,
                     ),
                 )
             )
@@ -126,23 +134,19 @@ class TaskRepository(BaseRepository[Task]):
                 ClassMembership.status == MEMBERSHIP_STATUS_APPROVED,
             )
         )
-        representative_classroom_ids = (
-            select(ClassMembership.classroom_id)
-            .where(
-                ClassMembership.user_id == user_id,
-                ClassMembership.status == MEMBERSHIP_STATUS_APPROVED,
-                ClassMembership.role == CLASS_ROLE_REPRESENTATIVE,
-            )
-        )
         registered_course_ids = (
             select(CourseRegistration.class_course_id)
+            .join(ClassCourse, ClassCourse.id == CourseRegistration.class_course_id)
             .where(
                 CourseRegistration.membership_id.in_(approved_membership_ids),
                 CourseRegistration.is_active.is_(True),
+                ClassCourse.is_active.is_(True),
             )
         )
+        active_course_task = self._active_class_course_task_condition()
 
-        # Feed visibility combines creator-owned personal tasks with shared tasks from approved classes.
+        # Match /feed semantics: course-linked tasks require active registration,
+        # even for representatives, and disappear when the class-course is dropped.
         statement = (
             select(Task)
             .options(
@@ -155,15 +159,18 @@ class TaskRepository(BaseRepository[Task]):
                     and_(
                         Task.visibility == TASK_VISIBILITY_PERSONAL,
                         Task.created_by_user_id == user_id,
+                        active_course_task,
                     ),
                     and_(
                         Task.visibility == TASK_VISIBILITY_SHARED,
                         Task.classroom_id.in_(approved_classroom_ids),
-                        or_(
-                            Task.class_course_id.is_(None),
-                            Task.class_course_id.in_(registered_course_ids),
-                            Task.classroom_id.in_(representative_classroom_ids),
-                        ),
+                        Task.class_course_id.is_(None),
+                    ),
+                    and_(
+                        Task.visibility == TASK_VISIBILITY_SHARED,
+                        Task.classroom_id.in_(approved_classroom_ids),
+                        Task.class_course_id.in_(registered_course_ids),
+                        active_course_task,
                     ),
                 )
             )
@@ -176,6 +183,12 @@ class TaskRepository(BaseRepository[Task]):
 
         result = await self.session.execute(statement)
         return list(result.scalars().all())
+
+    def _active_class_course_task_condition(self):
+        return or_(
+            Task.class_course_id.is_(None),
+            Task.class_course.has(ClassCourse.is_active.is_(True)),
+        )
 
     async def update(self, task: Task, task_in: TaskUpdate) -> Task:
         update_data = task_in.model_dump(exclude_unset=True)

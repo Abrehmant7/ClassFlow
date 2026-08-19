@@ -1,6 +1,7 @@
 from datetime import UTC, datetime, timedelta
 
 import pytest
+from sqlalchemy.dialects import postgresql
 
 from app.core.exceptions import ClassFlowError
 from app.models.classroom import CLASS_ROLE_REPRESENTATIVE, CLASS_ROLE_STUDENT, MEMBERSHIP_STATUS_APPROVED, ClassMembership, Classroom
@@ -22,6 +23,7 @@ from app.repositories.feed import (
     FeedQueryResult,
     FeedSummaryResult,
 )
+from app.repositories.feed import FeedRepository
 from app.services.feed import FeedService
 
 
@@ -433,3 +435,16 @@ def test_feed_due_group_classifies_pending_and_completed_tasks() -> None:
     assert build(week_end + timedelta(days=1)) == "later"
     assert build(None) == "no_deadline"
     assert build(now - timedelta(days=2), TASK_STATUS_COMPLETED) == "completed"
+
+
+def test_feed_authorization_requires_active_class_courses() -> None:
+    repository = FeedRepository(session=object())
+
+    compiled = str(
+        repository._authorized_feed_condition(user_id=20).compile(
+            dialect=postgresql.dialect(),
+            compile_kwargs={"literal_binds": True},
+        )
+    )
+
+    assert "class_courses.is_active IS true" in compiled

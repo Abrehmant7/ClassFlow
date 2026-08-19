@@ -10,9 +10,9 @@ import { getDisplayName } from "../utils/user.js";
 
 function DetailRow({ label, value }) {
   return (
-    <div className="border-b border-slate-200 py-3 last:border-b-0 sm:grid sm:grid-cols-[160px_1fr] sm:gap-4">
+    <div className="min-w-0 border-b border-slate-200 py-3 last:border-b-0 sm:grid sm:grid-cols-[120px_minmax(0,1fr)] sm:gap-4 xl:grid-cols-[160px_minmax(0,1fr)]">
       <dt className="text-sm font-medium text-slate-500">{label}</dt>
-      <dd className="mt-1 text-sm text-slate-900 sm:mt-0">
+      <dd className="mt-1 min-w-0 overflow-wrap-anywhere break-words text-sm text-slate-900 sm:mt-0">
         {value || "Not set"}
       </dd>
     </div>

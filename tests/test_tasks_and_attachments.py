@@ -6,6 +6,7 @@ from uuid import uuid4
 
 import pytest
 from fastapi import UploadFile
+from sqlalchemy.dialects import postgresql
 from starlette.datastructures import Headers
 
 from app.core.exceptions import ClassFlowError
@@ -24,6 +25,7 @@ from app.models.task import (
     TaskProgress,
 )
 from app.models.user import User
+from app.repositories.task import TaskRepository
 from app.schemas.task import TaskCreate, TaskProgressUpdate, TaskUpdate
 from app.services.task import TaskService
 
@@ -34,6 +36,23 @@ class FakeSession:
 
     async def rollback(self) -> None:
         return None
+
+
+class CapturingSession:
+    def __init__(self) -> None:
+        self.statement = None
+
+    async def execute(self, statement):
+        self.statement = statement
+        return EmptyScalarsResult()
+
+
+class EmptyScalarsResult:
+    def scalars(self):
+        return self
+
+    def all(self):
+        return []
 
 
 class FakeTaskRepository:
@@ -240,6 +259,12 @@ def make_task(
     )
 
 
+def attach_class_course(task: Task, class_course: ClassCourse) -> Task:
+    task.class_course_id = class_course.id
+    task.class_course = class_course
+    return task
+
+
 def make_upload(filename: str, content_type: str, content: bytes) -> UploadFile:
     return UploadFile(
         filename=filename,
@@ -322,6 +347,50 @@ async def test_inactive_courses_cannot_be_assigned_to_tasks() -> None:
         )
 
     assert exc_info.value.detail["error_code"] == "CLASS_COURSE_INACTIVE"
+
+
+@pytest.mark.anyio
+async def test_course_linked_tasks_disappear_when_class_course_is_inactive() -> None:
+    student = make_membership(2, user_id=20, classroom_id=1)
+    inactive_class_course = make_class_course(7, classroom_id=1, is_active=False)
+    task = attach_class_course(
+        make_task(
+            1,
+            classroom_id=1,
+            created_by_user_id=10,
+            class_course_id=inactive_class_course.id,
+        ),
+        inactive_class_course,
+    )
+    service = make_service(
+        memberships=[student],
+        tasks={task.id: task},
+        class_courses={inactive_class_course.id: inactive_class_course},
+        active_registration_keys={(student.id, inactive_class_course.id)},
+    )
+
+    with pytest.raises(ClassFlowError) as exc_info:
+        await service.get_task(task.id, user_id=20)
+
+    assert exc_info.value.status_code == 404
+    assert exc_info.value.detail["error_code"] == "TASK_NOT_FOUND"
+
+
+@pytest.mark.anyio
+async def test_legacy_tasks_feed_query_matches_feed_course_authorization() -> None:
+    session = CapturingSession()
+    repository = TaskRepository(session)
+
+    await repository.list_feed_for_user(user_id=20)
+
+    compiled = str(
+        session.statement.compile(
+            dialect=postgresql.dialect(),
+            compile_kwargs={"literal_binds": True},
+        )
+    )
+    assert "class_courses.is_active IS true" in compiled
+    assert "class_memberships.role = 'representative'" not in compiled
 
 
 @pytest.mark.anyio
