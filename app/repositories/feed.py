@@ -218,11 +218,13 @@ class FeedRepository(BaseRepository[Task]):
         result = await self.session.execute(
             select(CourseRegistration.id)
             .join(ClassMembership, ClassMembership.id == CourseRegistration.membership_id)
+            .join(ClassCourse, ClassCourse.id == CourseRegistration.class_course_id)
             .where(
                 ClassMembership.user_id == user_id,
                 ClassMembership.status == MEMBERSHIP_STATUS_APPROVED,
                 CourseRegistration.class_course_id == class_course_id,
                 CourseRegistration.is_active.is_(True),
+                ClassCourse.is_active.is_(True),
             )
             .limit(1)
         )
@@ -239,17 +241,21 @@ class FeedRepository(BaseRepository[Task]):
         registered_course_ids = (
             select(CourseRegistration.class_course_id)
             .join(ClassMembership, ClassMembership.id == CourseRegistration.membership_id)
+            .join(ClassCourse, ClassCourse.id == CourseRegistration.class_course_id)
             .where(
                 ClassMembership.user_id == user_id,
                 ClassMembership.status == MEMBERSHIP_STATUS_APPROVED,
                 CourseRegistration.is_active.is_(True),
+                ClassCourse.is_active.is_(True),
             )
         )
+        active_course_task = self._active_class_course_task_condition()
 
         return or_(
             and_(
                 Task.visibility == TASK_VISIBILITY_PERSONAL,
                 Task.created_by_user_id == user_id,
+                active_course_task,
             ),
             and_(
                 Task.visibility == TASK_VISIBILITY_SHARED,
@@ -259,7 +265,14 @@ class FeedRepository(BaseRepository[Task]):
             and_(
                 Task.visibility == TASK_VISIBILITY_SHARED,
                 Task.class_course_id.in_(registered_course_ids),
+                active_course_task,
             ),
+        )
+
+    def _active_class_course_task_condition(self):
+        return or_(
+            Task.class_course_id.is_(None),
+            Task.class_course.has(ClassCourse.is_active.is_(True)),
         )
 
     def _progress_join_for_user(self, user_id: int):

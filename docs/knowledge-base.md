@@ -1,6 +1,6 @@
 # ClassFlow Knowledge Base
 
-Last updated: 2026-08-18
+Last updated: 2026-08-19
 
 ## Project Goal
 
@@ -241,6 +241,7 @@ Implemented:
 - Automatic registration of existing approved members when a representative adds a default course
 - Course code normalization to uppercase
 - Duplicate protection for catalogue and class-course records
+- Dropped class courses are soft-deactivated. Course-linked tasks are hidden rather than closed.
 
 Endpoints:
 
@@ -264,6 +265,7 @@ Core rules:
 - Only approved class members can view/register/drop class courses.
 - Pending members cannot register for courses.
 - Cross-class course registration is blocked.
+- When a class course is dropped/deactivated, tasks linked to that class course disappear from task lists, feed queries, summaries, and direct task reads. The task rows are not automatically cancelled or archived.
 
 ## Module 4 - Tasks, Progress, And Attachments
 
@@ -325,8 +327,8 @@ PUT    /api/v1/personal-tasks/{task_id}/complete
 PUT    /api/v1/personal-tasks/{task_id}/reopen
 POST   /api/v1/tasks/{task_id}/attachments
 GET    /api/v1/tasks/{task_id}/attachments
-GET    /api/v1/task-attachments/{attachment_id}/download
-DELETE /api/v1/task-attachments/{attachment_id}
+GET    /api/v1/attachments/{attachment_id}/download
+DELETE /api/v1/attachments/{attachment_id}
 ```
 
 Shared task rules:
@@ -350,6 +352,7 @@ Personal task rules:
 - Personal tasks are not deleted on completion.
 - Personal tasks can be reopened.
 - Only the owner can delete a personal task.
+- Course-linked personal tasks disappear when their class course is dropped/deactivated.
 
 Attachment rules:
 
@@ -372,6 +375,7 @@ Implemented backend:
 - Timezone-aware due grouping
 - Pagination
 - Per-item permissions for frontend actions
+- Inactive class-course tasks are hidden rather than closed.
 
 Endpoints:
 
@@ -403,6 +407,7 @@ Feed visibility rules:
 - Shared class-wide tasks are visible to approved members of the classroom.
 - Shared course-specific tasks are visible only to actively registered students for that class course.
 - Representatives do not automatically see every course-specific shared task in the feed unless they are registered in the course.
+- Course-specific tasks are returned only while the linked class course is active.
 
 Feed response behavior:
 

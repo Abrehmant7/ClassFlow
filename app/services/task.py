@@ -213,6 +213,7 @@ class TaskService:
     async def update_progress(self, task_id: int, progress_in: TaskProgressUpdate, user_id: int) -> TaskRead:
         """Upsert the authenticated member's progress row for a shared task."""
         task = await self._get_task_or_404(task_id)
+        self._require_active_task_class_course(task)
         membership = await self._get_membership_for_task(task, user_id)
 
         if task.visibility != TASK_VISIBILITY_SHARED:
@@ -337,6 +338,8 @@ class TaskService:
         )
 
     async def _require_can_view_task(self, task: Task, membership: ClassMembership | None, user_id: int) -> None:
+        self._require_active_task_class_course(task)
+
         if task.visibility == TASK_VISIBILITY_PERSONAL:
             if task.created_by_user_id != user_id:
                 raise ClassFlowError("Task not found", "TASK_NOT_FOUND", status.HTTP_404_NOT_FOUND)
@@ -360,6 +363,8 @@ class TaskService:
         raise ClassFlowError("Task not found", "TASK_NOT_FOUND", status.HTTP_404_NOT_FOUND)
 
     async def _require_can_manage_task(self, task: Task, membership: ClassMembership | None, user_id: int) -> None:
+        self._require_active_task_class_course(task)
+
         if task.visibility == TASK_VISIBILITY_SHARED:
             membership = self._require_approved_membership_object(membership)
             self._require_representative_membership(membership)
@@ -371,6 +376,8 @@ class TaskService:
         raise ClassFlowError("Task management access required", "TASK_MANAGEMENT_REQUIRED", status.HTTP_403_FORBIDDEN)
 
     async def _require_can_manage_attachment(self, task: Task, membership: ClassMembership | None, user_id: int) -> None:
+        self._require_active_task_class_course(task)
+
         if task.visibility == TASK_VISIBILITY_SHARED:
             membership = self._require_approved_membership_object(membership)
             self._require_representative_membership(membership)
@@ -384,6 +391,14 @@ class TaskService:
     def _require_personal_task(self, task: Task) -> None:
         if task.visibility != TASK_VISIBILITY_PERSONAL:
             raise ClassFlowError("Personal task required", "PERSONAL_TASK_REQUIRED", status.HTTP_409_CONFLICT)
+
+    def _require_active_task_class_course(self, task: Task) -> None:
+        if (
+            task.class_course_id is not None
+            and task.class_course is not None
+            and not task.class_course.is_active
+        ):
+            raise ClassFlowError("Task not found", "TASK_NOT_FOUND", status.HTTP_404_NOT_FOUND)
 
     async def _validate_personal_task_links(
         self,
