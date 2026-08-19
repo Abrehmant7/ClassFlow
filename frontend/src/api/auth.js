@@ -24,6 +24,11 @@ export async function getCurrentUser() {
   return response.data;
 }
 
+export async function updateCurrentUser(payload) {
+  const response = await apiClient.patch("/users/me", payload);
+  return response.data;
+}
+
 export async function logoutUser(refreshToken) {
   const response = await apiClient.post("/auth/logout", {
     refresh_token: refreshToken,

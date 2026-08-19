@@ -10,6 +10,7 @@ import {
   loginUser,
   logoutUser,
   registerUser,
+  updateCurrentUser,
 } from "../api/auth.js";
 import { setAuthExpiredHandler } from "../api/client.js";
 import AuthContext from "./authContext.js";
@@ -85,6 +86,13 @@ export function AuthProvider({ children }) {
     return currentUser;
   }, []);
 
+  const updateProfile = useCallback(async (payload) => {
+    const updatedUser = await updateCurrentUser(payload);
+    setStoredUser(updatedUser);
+    setUser(updatedUser);
+    return updatedUser;
+  }, []);
+
   const logout = useCallback(async () => {
     const refreshToken = getRefreshToken();
 
@@ -104,9 +112,10 @@ export function AuthProvider({ children }) {
       isAuthenticated: Boolean(user && getAccessToken()),
       register,
       login,
+      updateProfile,
       logout,
     }),
-    [user, status, register, login, logout],
+    [user, status, register, login, updateProfile, logout],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
