@@ -26,15 +26,11 @@ const initialCreateForm = {
 
 function CourseCard({
   actionKey,
+  canAdd,
+  canSubmitAdd,
   course,
   onAddToClass,
-  representativeClassrooms,
-  selectedClassByCourse,
-  setSelectedClassByCourse,
 }) {
-  const selectedClassId = selectedClassByCourse[course.id] || "";
-  const canAdd = representativeClassrooms.length > 0;
-
   return (
     <div className="cf-card p-4">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
@@ -51,34 +47,13 @@ function CourseCard({
         </div>
 
         {canAdd ? (
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-            <label className="sr-only" htmlFor={`classroom-${course.id}`}>
-              Classroom
-            </label>
-            <select
-              className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20"
-              id={`classroom-${course.id}`}
-              onChange={(event) =>
-                setSelectedClassByCourse((current) => ({
-                  ...current,
-                  [course.id]: event.target.value,
-                }))
-              }
-              value={selectedClassId}
-            >
-              <option value="">Choose class</option>
-              {representativeClassrooms.map((classroom) => (
-                <option key={classroom.id} value={classroom.id}>
-                  {classroom.name}
-                </option>
-              ))}
-            </select>
+          <div>
             <Button
-              disabled={!selectedClassId || actionKey === `add:${course.id}`}
-              onClick={() => onAddToClass(course, Number(selectedClassId))}
+              disabled={!canSubmitAdd || actionKey === `add:${course.id}`}
+              onClick={() => onAddToClass(course)}
               variant="primary"
             >
-              {actionKey === `add:${course.id}` ? "Adding..." : "Add"}
+              {actionKey === `add:${course.id}` ? "Adding..." : "Add to class"}
             </Button>
           </div>
         ) : null}
@@ -92,7 +67,7 @@ function CourseCataloguePage() {
   const [courses, setCourses] = useState([]);
   const [matchingCourses, setMatchingCourses] = useState([]);
   const [representativeClassrooms, setRepresentativeClassrooms] = useState([]);
-  const [selectedClassByCourse, setSelectedClassByCourse] = useState({});
+  const [selectedClassId, setSelectedClassId] = useState("");
   const [createOpen, setCreateOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isSearching, setIsSearching] = useState(false);
@@ -125,10 +100,14 @@ function CourseCataloguePage() {
         ]);
 
         if (!isMounted) return;
-        setCourses(courseData);
-        setRepresentativeClassrooms(
-          classrooms.filter((classroom) => isRepresentative(classroom.membership)),
+        const managedClassrooms = classrooms.filter((classroom) =>
+          isRepresentative(classroom.membership),
         );
+        setCourses(courseData);
+        setRepresentativeClassrooms(managedClassrooms);
+        if (managedClassrooms.length === 1) {
+          setSelectedClassId(String(managedClassrooms[0].id));
+        }
       } catch (apiError) {
         if (isMounted) {
           setError(parseApiError(apiError));
@@ -211,19 +190,18 @@ function CourseCataloguePage() {
     }
   }
 
-  async function handleAddToClass(course, classId) {
+  async function handleAddToClass(course) {
     setActionKey(`add:${course.id}`);
     setError(null);
     setSuccess("");
 
     try {
-      await addClassCourse(classId, {
+      await addClassCourse(Number(selectedClassId), {
         course_id: course.id,
         instructor_name: null,
         is_default: false,
       });
       setSuccess(`${formatCourseTitle(course)} was added to the selected class.`);
-      setSelectedClassByCourse((current) => ({ ...current, [course.id]: "" }));
     } catch (apiError) {
       setError(parseApiError(apiError));
     } finally {
@@ -260,7 +238,7 @@ function CourseCataloguePage() {
       {success ? <Alert type="success" title="Updated" message={success} /> : null}
 
       <form className="cf-card p-4" onSubmit={handleSearch}>
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+        <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_260px_auto] lg:items-end">
           <div className="flex-1">
             <FormField
               id="catalogue-search"
@@ -271,6 +249,26 @@ function CourseCataloguePage() {
               value={search}
             />
           </div>
+          {representativeClassrooms.length > 0 ? (
+            <div>
+              <label htmlFor="catalogue-target-class" className="cf-label">
+                Add to class
+              </label>
+              <select
+                className="cf-input"
+                id="catalogue-target-class"
+                onChange={(event) => setSelectedClassId(event.target.value)}
+                value={selectedClassId}
+              >
+                <option value="">Choose class</option>
+                {representativeClassrooms.map((classroom) => (
+                  <option key={classroom.id} value={classroom.id}>
+                    {classroom.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          ) : null}
           <Button disabled={isSearching} type="submit" variant="primary">
             {isSearching ? "Searching..." : "Search"}
           </Button>
@@ -299,12 +297,11 @@ function CourseCataloguePage() {
           {courses.map((course) => (
             <CourseCard
               actionKey={actionKey}
+              canAdd={representativeClassrooms.length > 0}
+              canSubmitAdd={Boolean(selectedClassId)}
               course={course}
               key={course.id}
               onAddToClass={handleAddToClass}
-              representativeClassrooms={representativeClassrooms}
-              selectedClassByCourse={selectedClassByCourse}
-              setSelectedClassByCourse={setSelectedClassByCourse}
             />
           ))}
         </div>

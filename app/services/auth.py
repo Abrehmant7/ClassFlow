@@ -102,6 +102,7 @@ class AuthService:
     async def refresh_login_token(self, refresh_token: str) -> Token:
         token_record = await self.get_valid_refresh_token(refresh_token)
         user = await self.user_repository.get_by_id(token_record.user_id)
+        
 
         if user is None or not user.is_active:
             raise ClassFlowError(

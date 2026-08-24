@@ -34,10 +34,10 @@ function formatDate(value) {
 function SummaryItem({ label, value }) {
   return (
     <div>
-      <dt className="text-xs font-semibold uppercase tracking-wide text-[#64748B]">
+      <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">
         {label}
       </dt>
-      <dd className="mt-1 text-sm font-medium text-[#020617]">{value}</dd>
+      <dd className="mt-1 text-sm font-medium text-slate-950">{value}</dd>
     </div>
   );
 }
@@ -71,7 +71,7 @@ function MembershipRow({
   const isBusy = actionKey?.endsWith(`:${membership.id}`);
 
   return (
-    <div className="grid gap-3 border-b border-[#e5eaf2] py-4 last:border-b-0 lg:grid-cols-[1fr_auto] lg:items-center">
+    <div className="grid gap-3 border-b border-slate-200 py-4 last:border-b-0 lg:grid-cols-[1fr_auto] lg:items-center">
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
         <SummaryItem label="Name" value={getMemberName(membership)} />
         <SummaryItem
@@ -92,7 +92,7 @@ function MembershipRow({
             type="button"
             disabled={isBusy}
             onClick={() => onApprove(membership.id)}
-            className="rounded-md bg-[#2563EB] px-3 py-2 text-sm font-semibold text-white transition hover:bg-[#1D4ED8] focus:outline-none focus:ring-2 focus:ring-[#2563EB] focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-[#93C5FD]"
+            className="rounded-md bg-blue-600 px-3 py-2 text-sm font-semibold text-white transition hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-blue-300"
           >
             {actionKey === `approve:${membership.id}` ? "Approving..." : "Approve"}
           </button>
@@ -100,7 +100,7 @@ function MembershipRow({
             type="button"
             disabled={isBusy}
             onClick={() => onReject(membership.id)}
-            className="rounded-md border border-[#FECACA] px-3 py-2 text-sm font-semibold text-[#B91C1C] transition hover:bg-[#FEF2F2] focus:outline-none focus:ring-2 focus:ring-[#DC2626] focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+            className="rounded-md border border-red-200 px-3 py-2 text-sm font-semibold text-red-700 transition hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-red-600 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
           >
             {actionKey === `reject:${membership.id}` ? "Rejecting..." : "Reject"}
           </button>
@@ -110,13 +110,13 @@ function MembershipRow({
       {canRemove ? (
         <div className="lg:justify-self-end">
           {confirmRemovalId === membership.id ? (
-            <div className="flex flex-wrap items-center gap-2 rounded-md border border-[#FECACA] bg-[#FEF2F2] p-2">
-              <span className="text-sm font-medium text-[#B91C1C]">Remove?</span>
+            <div className="flex flex-wrap items-center gap-2 rounded-md border border-red-200 bg-red-50 p-2">
+              <span className="text-sm font-medium text-red-700">Remove?</span>
               <button
                 type="button"
                 disabled={isBusy}
                 onClick={() => onConfirmRemove(membership.id)}
-                className="rounded-md bg-[#DC2626] px-3 py-1.5 text-sm font-semibold text-white transition hover:bg-[#B91C1C] focus:outline-none focus:ring-2 focus:ring-[#DC2626] focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+                className="rounded-md bg-red-600 px-3 py-1.5 text-sm font-semibold text-white transition hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-600 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {actionKey === `remove:${membership.id}` ? "Removing..." : "Yes"}
               </button>
@@ -124,7 +124,7 @@ function MembershipRow({
                 type="button"
                 disabled={isBusy}
                 onClick={onCancelRemove}
-                className="rounded-md border border-[#E2E8F0] px-3 py-1.5 text-sm font-semibold text-[#475569] transition hover:bg-white focus:outline-none focus:ring-2 focus:ring-[#2563EB] focus:ring-offset-2"
+                className="rounded-md border border-slate-200 px-3 py-1.5 text-sm font-semibold text-slate-600 transition hover:bg-white focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2"
               >
                 Cancel
               </button>
@@ -133,7 +133,7 @@ function MembershipRow({
             <button
               type="button"
               onClick={() => onRemovePrompt(membership.id)}
-              className="rounded-md border border-[#FECACA] px-3 py-2 text-sm font-semibold text-[#B91C1C] transition hover:bg-[#FEF2F2] focus:outline-none focus:ring-2 focus:ring-[#DC2626] focus:ring-offset-2"
+              className="rounded-md border border-red-200 px-3 py-2 text-sm font-semibold text-red-700 transition hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-red-600 focus:ring-offset-2"
             >
               Remove
             </button>
@@ -253,7 +253,7 @@ function ClassDetailsPage() {
         <Alert title="Could not load class" message={error.message} items={error.items} />
         <Link
           to="/classes/join"
-          className="inline-flex rounded-md bg-[#2563EB] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#1D4ED8] focus:outline-none focus:ring-2 focus:ring-[#2563EB] focus:ring-offset-2"
+          className="inline-flex rounded-md bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2"
         >
           Request membership
         </Link>
@@ -270,17 +270,17 @@ function ClassDetailsPage() {
       ) : null}
 
       {!isApproved(membership) ? (
-        <div className="rounded-md border border-[#FDE68A] bg-[#FFFBEB] p-5">
-          <h2 className="text-lg font-semibold text-[#020617]">
+        <div className="rounded-md border border-amber-200 bg-amber-50 p-5">
+          <h2 className="text-lg font-semibold text-slate-950">
             Membership {membership?.status}
           </h2>
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-[#B45309]">
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-amber-700">
             Protected class content is available only after your membership is
             approved by a class representative.
           </p>
           <Link
             to="/classes"
-            className="mt-4 inline-flex rounded-md border border-[#FDE68A] px-4 py-2 text-sm font-semibold text-[#B45309] transition hover:bg-white focus:outline-none focus:ring-2 focus:ring-[#D97706] focus:ring-offset-2"
+            className="mt-4 inline-flex rounded-md border border-amber-200 px-4 py-2 text-sm font-semibold text-amber-700 transition hover:bg-white focus:outline-none focus:ring-2 focus:ring-amber-600 focus:ring-offset-2"
           >
             Back to My Classes
           </Link>
@@ -299,23 +299,23 @@ function ClassDetailsPage() {
           ) : null}
 
           {canManageMembers ? (
-            <div className="rounded-md border border-[#E2E8F0] bg-white p-5 shadow-sm sm:p-6">
+            <div className="rounded-md border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
               <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                  <h2 className="text-lg font-semibold text-[#020617]">
+                  <h2 className="text-lg font-semibold text-slate-950">
                     Membership Requests
                   </h2>
-                  <p className="mt-1 text-sm text-[#64748B]">
+                  <p className="mt-1 text-sm text-slate-500">
                     Pending requests for this class.
                   </p>
                 </div>
-                <span className="text-sm font-medium text-[#64748B]">
+                <span className="text-sm font-medium text-slate-500">
                   {requests.length} pending
                 </span>
               </div>
 
               {requests.length === 0 ? (
-                <p className="mt-5 rounded-md border border-dashed border-[#E2E8F0] p-4 text-sm text-[#64748B]">
+                <p className="mt-5 rounded-md border border-dashed border-slate-200 p-4 text-sm text-slate-500">
                   No pending membership requests.
                 </p>
               ) : (
@@ -347,23 +347,23 @@ function ClassDetailsPage() {
             </div>
           ) : null}
 
-          <div className="rounded-md border border-[#E2E8F0] bg-white p-5 shadow-sm sm:p-6">
+          <div className="rounded-md border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <h2 className="text-lg font-semibold text-[#020617]">
+                <h2 className="text-lg font-semibold text-slate-950">
                   Approved Members
                 </h2>
-                <p className="mt-1 text-sm text-[#64748B]">
+                <p className="mt-1 text-sm text-slate-500">
                   Current approved membership list.
                 </p>
               </div>
-              <span className="text-sm font-medium text-[#64748B]">
+              <span className="text-sm font-medium text-slate-500">
                 {members.length} approved
               </span>
             </div>
 
             {members.length === 0 ? (
-              <p className="mt-5 rounded-md border border-dashed border-[#E2E8F0] p-4 text-sm text-[#64748B]">
+              <p className="mt-5 rounded-md border border-dashed border-slate-200 p-4 text-sm text-slate-500">
                 No approved members were returned by the backend.
               </p>
             ) : (
@@ -402,3 +402,4 @@ function ClassDetailsPage() {
 }
 
 export default ClassDetailsPage;
+

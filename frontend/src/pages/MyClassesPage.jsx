@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 
 import { listMyClassrooms } from "../api/classrooms.js";
 import Alert from "../components/Alert.jsx";
 import Button from "../components/Button.jsx";
+import CreateClassModal from "../components/CreateClassModal.jsx";
 import EmptyState from "../components/EmptyState.jsx";
+import JoinClassModal from "../components/JoinClassModal.jsx";
 import LoadingScreen from "../components/LoadingScreen.jsx";
 import PageHeader from "../components/PageHeader.jsx";
 import StatusBadge from "../components/StatusBadge.jsx";
@@ -65,7 +67,10 @@ function ClassCard({ classroom }) {
 }
 
 function MyClassesPage() {
+  const navigate = useNavigate();
   const [classrooms, setClassrooms] = useState([]);
+  const [createOpen, setCreateOpen] = useState(false);
+  const [joinOpen, setJoinOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -105,12 +110,10 @@ function MyClassesPage() {
       <PageHeader
         actions={
           <>
-            <Link to="/classes/join">
-              <Button>Join class</Button>
-            </Link>
-            <Link to="/classes/new">
-              <Button variant="primary">Create class</Button>
-            </Link>
+            <Button onClick={() => setJoinOpen(true)}>Join class</Button>
+            <Button onClick={() => setCreateOpen(true)} variant="primary">
+              Create class
+            </Button>
           </>
         }
         eyebrow="Classes"
@@ -129,12 +132,10 @@ function MyClassesPage() {
         <EmptyState
           action={
             <div className="flex flex-wrap justify-center gap-2">
-              <Link to="/classes/join">
-                <Button>Join class</Button>
-              </Link>
-              <Link to="/classes/new">
-                <Button variant="primary">Create class</Button>
-              </Link>
+              <Button onClick={() => setJoinOpen(true)}>Join class</Button>
+              <Button onClick={() => setCreateOpen(true)} variant="primary">
+                Create class
+              </Button>
             </div>
           }
           message="Create a class as a representative or request access with a class ID and join code."
@@ -147,6 +148,21 @@ function MyClassesPage() {
           ))}
         </div>
       )}
+
+      <JoinClassModal
+        isOpen={joinOpen}
+        onClose={() => setJoinOpen(false)}
+        onJoined={(membership) => {
+          navigate(`/classes/${membership.classroom_id}`);
+        }}
+      />
+      <CreateClassModal
+        isOpen={createOpen}
+        onClose={() => setCreateOpen(false)}
+        onCreated={(classroom) => {
+          navigate(`/classes/${classroom.id}`);
+        }}
+      />
     </section>
   );
 }

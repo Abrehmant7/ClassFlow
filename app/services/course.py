@@ -230,6 +230,9 @@ class CourseRegistrationService:
     async def drop_course(self, class_course_id: int, user_id: int) -> None:
         """Drop an active course registration for an approved member of the same class."""
         class_course = await self._get_active_class_course_or_404(class_course_id)
+        if class_course.is_default:
+            raise ClassFlowError("Default courses cannot be dropped", "DEFAULT_COURSE_DROP_NOT_ALLOWED", status.HTTP_409_CONFLICT)
+
         membership = await self._get_approved_membership_for_class(user_id, class_course.classroom_id)
         registration = await self.registration_repository.get_by_membership_and_class_course(
             membership_id=membership.id,

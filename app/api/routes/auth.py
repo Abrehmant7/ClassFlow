@@ -33,6 +33,7 @@ def get_auth_service(session: AsyncSession) -> AuthService:
         password_reset_token_repository=PasswordResetTokenRepository(session),
         email_service=EmailService(),
     )
+    
 
 
 @router.post("/register", response_model=UserRead, status_code=status.HTTP_201_CREATED)

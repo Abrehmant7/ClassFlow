@@ -450,6 +450,75 @@ async def test_personal_task_remains_invisible_to_class_representative() -> None
 
 
 @pytest.mark.anyio
+async def test_personal_task_remains_invisible_to_another_student() -> None:
+    owner = make_membership(1, user_id=20, classroom_id=1)
+    other_student = make_membership(2, user_id=30, classroom_id=1)
+    task = make_task(
+        1,
+        classroom_id=1,
+        created_by_user_id=20,
+        visibility=TASK_VISIBILITY_PERSONAL,
+    )
+    service = make_service(memberships=[owner, other_student], tasks={task.id: task})
+
+    with pytest.raises(ClassFlowError) as exc_info:
+        await service.get_task(task.id, user_id=30)
+
+    assert exc_info.value.status_code == 404
+    assert exc_info.value.detail["error_code"] == "TASK_NOT_FOUND"
+
+
+@pytest.mark.anyio
+async def test_non_registered_student_cannot_retrieve_course_specific_shared_task() -> None:
+    student = make_membership(2, user_id=20, classroom_id=1)
+    task = make_task(
+        1,
+        classroom_id=1,
+        created_by_user_id=10,
+        class_course_id=7,
+    )
+    service = make_service(
+        memberships=[student],
+        tasks={task.id: task},
+        class_courses={7: make_class_course(7, classroom_id=1)},
+    )
+
+    with pytest.raises(ClassFlowError) as exc_info:
+        await service.get_task(task.id, user_id=20)
+
+    assert exc_info.value.status_code == 403
+    assert exc_info.value.detail["error_code"] == "COURSE_REGISTRATION_REQUIRED"
+
+
+@pytest.mark.anyio
+async def test_registered_student_can_retrieve_course_specific_shared_task() -> None:
+    student = make_membership(2, user_id=20, classroom_id=1)
+    class_course = make_class_course(7, classroom_id=1)
+    task = attach_class_course(
+        make_task(
+            1,
+            classroom_id=1,
+            created_by_user_id=10,
+            class_course_id=class_course.id,
+        ),
+        class_course,
+    )
+    service = make_service(
+        memberships=[student],
+        tasks={task.id: task},
+        class_courses={class_course.id: class_course},
+        active_registration_keys={(student.id, class_course.id)},
+    )
+
+    result = await service.get_task(task.id, user_id=20)
+
+    assert result.id == task.id
+    assert result.visibility == TASK_VISIBILITY_SHARED
+    assert result.class_course_id == class_course.id
+    assert result.can_manage is False
+
+
+@pytest.mark.anyio
 async def test_progress_updates_reuse_one_record_per_task_and_membership() -> None:
     student = make_membership(2, user_id=20, classroom_id=1)
     task = make_task(1, classroom_id=1, created_by_user_id=10)

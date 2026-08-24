@@ -19,6 +19,7 @@ import EmptyState from "../components/EmptyState.jsx";
 import FormField from "../components/FormField.jsx";
 import LoadingScreen from "../components/LoadingScreen.jsx";
 import Modal from "../components/Modal.jsx";
+import TaskProgressButton from "../components/TaskProgressButton.jsx";
 import TaskRow from "../components/TaskRow.jsx";
 import TextAreaField from "../components/TextAreaField.jsx";
 import { useAuth } from "../auth/useAuth.js";
@@ -31,7 +32,15 @@ import {
 import { getDisplayName } from "../utils/user.js";
 
 const pageSize = 20;
-const timezone = "UTC";
+const fallbackTimezone = "UTC";
+
+function getBrowserTimezone() {
+  return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+}
+
+function isInvalidTimezoneError(error) {
+  return error.response?.data?.error_code === "INVALID_TIMEZONE";
+}
 
 const defaultFilters = {
   view: "active",
@@ -139,22 +148,31 @@ function FilterChip({ label, onRemove }) {
   );
 }
 
-function TaskProgressButton({ checked, disabled, isBusy, onClick }) {
-  return (
-    <button
-      aria-pressed={checked}
-      className={`flex h-5 w-5 items-center justify-center rounded border text-xs font-bold transition cf-focus ${
-        checked
-          ? "border-emerald-600 bg-emerald-600 text-white"
-          : "border-slate-300 bg-white text-transparent hover:border-blue-600"
-      } disabled:cursor-not-allowed disabled:opacity-60`}
-      disabled={disabled || isBusy}
-      onClick={onClick}
-      type="button"
-    >
-      Ã¢Å“â€œ
-    </button>
-  );
+function titleCase(value) {
+  return String(value || "")
+    .replaceAll("_", " ")
+    .replace(/\b\w/g, (character) => character.toUpperCase());
+}
+
+function getFilterChipLabel(key, value, options) {
+  if (key === "classroom_id") {
+    const classroom = options.classrooms.find(
+      (item) => item.id === Number(value),
+    );
+    return `Classroom: ${classroom?.name || value}`;
+  }
+
+  if (key === "class_course_id") {
+    const course = options.courses.find(
+      (item) => item.class_course_id === Number(value),
+    );
+    const courseName = course
+      ? `${course.code} / ${course.name}`
+      : value;
+    return `Course: ${courseName}`;
+  }
+
+  return `${titleCase(key)}: ${titleCase(value)}`;
 }
 
 function RowMenu({ canDelete, canEdit, isBusy, onDelete, task }) {
@@ -212,11 +230,7 @@ function TaskSection({ actionKey, onDelete, onPersonalToggle, onSharedToggle, ta
                   canDelete={task.permissions.can_delete}
                   canEdit={task.permissions.can_edit}
                   isBusy={isBusy}
-                  onDelete={() => {
-                    if (window.confirm("Delete this task?")) {
-                      onDelete(task.id);
-                    }
-                  }}
+                  onDelete={() => onDelete(task)}
                   task={task}
                 />
               }
@@ -270,6 +284,7 @@ function PersonalFeedPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const filters = useMemo(() => readFilters(searchParams), [searchParams]);
   const page = useMemo(() => getPage(searchParams), [searchParams]);
+  const browserTimezone = useMemo(() => getBrowserTimezone(), []);
   const [summary, setSummary] = useState(null);
   const [options, setOptions] = useState({ classrooms: [], courses: [] });
   const [feed, setFeed] = useState({
@@ -279,10 +294,12 @@ function PersonalFeedPage() {
     total: 0,
     total_pages: 0,
   });
+  const [searchDraft, setSearchDraft] = useState(filters.search);
   const [form, setForm] = useState(initialTaskForm);
   const [showFilters, setShowFilters] = useState(false);
   const [showMoreOptions, setShowMoreOptions] = useState(false);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [deleteCandidate, setDeleteCandidate] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [actionKey, setActionKey] = useState("");
@@ -325,15 +342,33 @@ function PersonalFeedPage() {
     [searchParams, setSearchParams],
   );
 
+  const loadSummary = useCallback(async () => {
+    try {
+      const summaryData = await fetchFeedSummary(browserTimezone);
+      setSummary(summaryData);
+    } catch (apiError) {
+      if (!isInvalidTimezoneError(apiError)) {
+        setError(parseApiError(apiError));
+        return;
+      }
+
+      try {
+        const summaryData = await fetchFeedSummary(fallbackTimezone);
+        setSummary(summaryData);
+      } catch (fallbackError) {
+        setError(parseApiError(fallbackError));
+      }
+    }
+  }, [browserTimezone]);
+
   const loadFeed = useCallback(async () => {
     setError(null);
-    setActionError(null);
 
     try {
       const params = {
         ...filters,
         search: filters.search.trim().slice(0, 100),
-        timezone,
+        timezone: browserTimezone,
         page,
         page_size: pageSize,
       };
@@ -342,21 +377,32 @@ function PersonalFeedPage() {
         delete params.search;
       }
 
-      const [summaryData, feedData] = await Promise.all([
-        fetchFeedSummary(timezone),
-        fetchFeed(params),
-      ]);
-      setSummary(summaryData);
+      let feedData;
+      try {
+        feedData = await fetchFeed(params);
+      } catch (apiError) {
+        if (!isInvalidTimezoneError(apiError)) {
+          throw apiError;
+        }
+
+        feedData = await fetchFeed({
+          ...params,
+          timezone: fallbackTimezone,
+        });
+      }
+
       setFeed(feedData);
     } catch (apiError) {
       setError(parseApiError(apiError));
+    } finally {
+      setIsLoading(false);
     }
-  }, [filters, page]);
+  }, [browserTimezone, filters, page]);
 
   useEffect(() => {
     let isMounted = true;
 
-    async function loadInitial() {
+    async function loadOptions() {
       try {
         const filterOptions = await fetchFeedFilterOptions();
         if (isMounted) {
@@ -367,19 +413,36 @@ function PersonalFeedPage() {
           setError(parseApiError(apiError));
         }
       }
-
-      await loadFeed();
-      if (isMounted) {
-        setIsLoading(false);
-      }
     }
 
-    loadInitial();
+    loadOptions();
 
     return () => {
       isMounted = false;
     };
+  }, []);
+
+  useEffect(() => {
+    loadSummary();
+  }, [loadSummary]);
+
+  useEffect(() => {
+    loadFeed();
   }, [loadFeed]);
+
+  useEffect(() => {
+    setSearchDraft(filters.search);
+  }, [filters.search]);
+
+  useEffect(() => {
+    if (searchDraft === filters.search) return undefined;
+
+    const timeoutId = window.setTimeout(() => {
+      updateParams({ search: searchDraft.trim().slice(0, 100) });
+    }, 300);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [filters.search, searchDraft, updateParams]);
 
   useEffect(() => {
     if (searchParams.get("newTask") === "1") {
@@ -412,7 +475,7 @@ function PersonalFeedPage() {
 
   async function refreshAfterAction(message) {
     setSuccess(message);
-    await loadFeed();
+    await Promise.all([loadFeed(), loadSummary()]);
   }
 
   async function handleCreate(event) {
@@ -522,9 +585,11 @@ function PersonalFeedPage() {
             <input
               className="block w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20"
               id="feed-search"
-              onChange={(event) => updateFilter("search", event.target.value)}
+              onChange={(event) =>
+                setSearchDraft(event.target.value.slice(0, 100))
+              }
               placeholder="Search tasks"
-              value={filters.search}
+              value={searchDraft}
             />
           </div>
 
@@ -643,7 +708,7 @@ function PersonalFeedPage() {
             {activeFilterEntries.map(([key, value]) => (
               <FilterChip
                 key={key}
-                label={`${key.replaceAll("_", " ")}: ${value}`}
+                label={getFilterChipLabel(key, value, options)}
                 onRemove={() => updateFilter(key, "")}
               />
             ))}
@@ -691,13 +756,7 @@ function PersonalFeedPage() {
             <TaskSection
               actionKey={actionKey}
               key={title}
-              onDelete={(taskId) =>
-                runAction(
-                  `delete:${taskId}`,
-                  () => deleteTask(taskId),
-                  "Task deleted.",
-                )
-              }
+              onDelete={setDeleteCandidate}
               onPersonalToggle={(task) =>
                 runAction(
                   `${task.task_status === "completed" ? "reopen" : "complete"}:${task.id}`,
@@ -873,6 +932,42 @@ function PersonalFeedPage() {
             </Button>
           </div>
         </form>
+      </Modal>
+
+      <Modal
+        description="This removes the personal task from your feed."
+        isOpen={Boolean(deleteCandidate)}
+        onClose={() => setDeleteCandidate(null)}
+        title="Delete task?"
+      >
+        <div className="space-y-4">
+          <p className="text-sm leading-6 text-slate-600">
+            Delete <span className="font-semibold text-slate-900">{deleteCandidate?.title}</span>?
+            This action cannot be undone.
+          </p>
+          <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+            <Button onClick={() => setDeleteCandidate(null)}>Cancel</Button>
+            <Button
+              disabled={Boolean(
+                deleteCandidate && actionKey === `delete:${deleteCandidate.id}`,
+              )}
+              onClick={() => {
+                const task = deleteCandidate;
+                setDeleteCandidate(null);
+                runAction(
+                  `delete:${task.id}`,
+                  () => deleteTask(task.id),
+                  "Task deleted.",
+                );
+              }}
+              variant="danger"
+            >
+              {deleteCandidate && actionKey === `delete:${deleteCandidate.id}`
+                ? "Deleting..."
+                : "Delete task"}
+            </Button>
+          </div>
+        </div>
       </Modal>
     </section>
   );

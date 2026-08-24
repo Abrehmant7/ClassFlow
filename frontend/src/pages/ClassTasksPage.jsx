@@ -15,43 +15,13 @@ import Alert from "../components/Alert.jsx";
 import Button from "../components/Button.jsx";
 import ClassWorkspaceHeader from "../components/ClassWorkspaceHeader.jsx";
 import EmptyState from "../components/EmptyState.jsx";
-import FormField from "../components/FormField.jsx";
 import LoadingScreen from "../components/LoadingScreen.jsx";
 import Modal from "../components/Modal.jsx";
+import SharedTaskModal from "../components/SharedTaskModal.jsx";
+import TaskProgressButton from "../components/TaskProgressButton.jsx";
 import TaskRow from "../components/TaskRow.jsx";
-import TextAreaField from "../components/TextAreaField.jsx";
 import { isApproved, isRepresentative } from "../utils/classrooms.js";
-import { formatCourseTitle } from "../utils/courses.js";
 import { parseApiError } from "../utils/errors.js";
-import { TASK_PRIORITIES, TASK_TYPES, toApiDeadline } from "../utils/tasks.js";
-
-const initialTaskForm = {
-  title: "",
-  description: "",
-  class_course_id: "",
-  task_type: "other",
-  priority: "medium",
-  deadline: "",
-};
-
-function SelectField({ id, label, name, onChange, value, children }) {
-  return (
-    <div>
-      <label htmlFor={id} className="cf-label">
-        {label}
-      </label>
-      <select
-        className="cf-input"
-        id={id}
-        name={name}
-        onChange={onChange}
-        value={value}
-      >
-        {children}
-      </select>
-    </div>
-  );
-}
 
 function isCompletedTask(task) {
   if (task.visibility === "personal") {
@@ -61,24 +31,6 @@ function isCompletedTask(task) {
   return task.my_progress?.status === "completed";
 }
 
-function TaskProgressButton({ checked, disabled, isBusy, onClick }) {
-  return (
-    <button
-      aria-pressed={checked}
-      className={`flex h-5 w-5 items-center justify-center rounded border text-xs font-bold transition cf-focus ${
-        checked
-          ? "border-emerald-600 bg-emerald-600 text-white"
-          : "border-slate-300 bg-white text-transparent hover:border-blue-600"
-      } disabled:cursor-not-allowed disabled:opacity-60`}
-      disabled={disabled || isBusy}
-      onClick={onClick}
-      type="button"
-    >
-      Ã¢Å“â€œ
-    </button>
-  );
-}
-
 function ClassTasksPage({ completedOnly = false }) {
   const { classId } = useParams();
   const numericClassId = Number(classId);
@@ -86,8 +38,8 @@ function ClassTasksPage({ completedOnly = false }) {
   const [membership, setMembership] = useState(null);
   const [tasks, setTasks] = useState([]);
   const [classCourses, setClassCourses] = useState([]);
-  const [form, setForm] = useState(initialTaskForm);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [deleteCandidate, setDeleteCandidate] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [actionKey, setActionKey] = useState("");
@@ -164,41 +116,19 @@ function ClassTasksPage({ completedOnly = false }) {
     };
   }, [loadData]);
 
-  function handleChange(event) {
-    const { name, value } = event.target;
-    setForm((current) => ({ ...current, [name]: value }));
-  }
-
-  async function handleSubmit(event) {
-    event.preventDefault();
+  async function handleCreateSharedTask(payload) {
     setIsSubmitting(true);
     setActionError(null);
     setSuccess("");
 
     try {
-      const payload = {
-        title: form.title.trim(),
-        visibility: "shared",
-        task_type: form.task_type,
-        priority: form.priority,
-        class_course_id: form.class_course_id
-          ? Number(form.class_course_id)
-          : null,
-        deadline: toApiDeadline(form.deadline),
-      };
-
-      const description = form.description.trim();
-      if (description) {
-        payload.description = description;
-      }
-
       const created = await createTask(numericClassId, payload);
       setSuccess(`${created.title} was created.`);
-      setForm(initialTaskForm);
-      setIsCreateOpen(false);
       await loadData();
+      return created;
     } catch (apiError) {
       setActionError(parseApiError(apiError));
+      return null;
     } finally {
       setIsSubmitting(false);
     }
@@ -333,15 +263,7 @@ function ClassTasksPage({ completedOnly = false }) {
                       task.can_manage && isPersonal ? (
                         <Button
                           className="px-3 py-1.5"
-                          onClick={() => {
-                            if (window.confirm("Delete this personal task?")) {
-                              runAction(
-                                `delete:${task.id}`,
-                                () => deleteTask(task.id),
-                                "Task deleted.",
-                              );
-                            }
-                          }}
+                          onClick={() => setDeleteCandidate(task)}
                           variant="danger"
                         >
                           Delete
@@ -351,7 +273,7 @@ function ClassTasksPage({ completedOnly = false }) {
                     progressControl={
                       <TaskProgressButton
                         checked={completed}
-                        disabled={!isPersonal && !task.can_manage && false}
+                        disabled={task.status !== "active"}
                         isBusy={isBusy}
                         onClick={() =>
                           isPersonal
@@ -389,86 +311,52 @@ function ClassTasksPage({ completedOnly = false }) {
         </>
       )}
 
-      <Modal
-        description="Shared tasks are visible to approved members according to the backend course and membership rules."
+      <SharedTaskModal
+        activeClassCourses={activeClassCourses}
+        error={actionError}
         isOpen={isCreateOpen}
-        onClose={() => setIsCreateOpen(false)}
-        title="Create shared task"
+        isSubmitting={isSubmitting}
+        onClose={() => {
+          setIsCreateOpen(false);
+          setActionError(null);
+        }}
+        onCreate={handleCreateSharedTask}
+      />
+
+      <Modal
+        description="This removes the personal task from this class view."
+        isOpen={Boolean(deleteCandidate)}
+        onClose={() => setDeleteCandidate(null)}
+        title="Delete personal task?"
       >
-        <form className="space-y-4" onSubmit={handleSubmit}>
-          <FormField
-            id="task-title"
-            label="Title"
-            name="title"
-            onChange={handleChange}
-            required
-            value={form.title}
-          />
-          <div className="grid gap-4 sm:grid-cols-2">
-            <SelectField
-              id="task-course"
-              label="Course"
-              name="class_course_id"
-              onChange={handleChange}
-              value={form.class_course_id}
-            >
-              <option value="">Class-wide</option>
-              {activeClassCourses.map((classCourse) => (
-                <option key={classCourse.id} value={classCourse.id}>
-                  {formatCourseTitle(classCourse.course)}
-                </option>
-              ))}
-            </SelectField>
-            <SelectField
-              id="task-priority"
-              label="Priority"
-              name="priority"
-              onChange={handleChange}
-              value={form.priority}
-            >
-              {TASK_PRIORITIES.map((priority) => (
-                <option key={priority} value={priority}>
-                  {priority}
-                </option>
-              ))}
-            </SelectField>
-            <SelectField
-              id="task-type"
-              label="Task type"
-              name="task_type"
-              onChange={handleChange}
-              value={form.task_type}
-            >
-              {TASK_TYPES.map((type) => (
-                <option key={type} value={type}>
-                  {type}
-                </option>
-              ))}
-            </SelectField>
-            <FormField
-              id="task-deadline"
-              label="Deadline"
-              name="deadline"
-              onChange={handleChange}
-              type="datetime-local"
-              value={form.deadline}
-            />
-          </div>
-          <TextAreaField
-            id="task-description"
-            label="Description"
-            name="description"
-            onChange={handleChange}
-            rows={3}
-            value={form.description}
-          />
+        <div className="space-y-4">
+          <p className="text-sm leading-6 text-slate-600">
+            Delete <span className="font-semibold text-slate-900">{deleteCandidate?.title}</span>?
+            This action cannot be undone.
+          </p>
           <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-            <Button onClick={() => setIsCreateOpen(false)}>Cancel</Button>
-            <Button disabled={isSubmitting} type="submit" variant="primary">
-              {isSubmitting ? "Creating..." : "Create task"}
+            <Button onClick={() => setDeleteCandidate(null)}>Cancel</Button>
+            <Button
+              disabled={Boolean(
+                deleteCandidate && actionKey === `delete:${deleteCandidate.id}`,
+              )}
+              onClick={() => {
+                const task = deleteCandidate;
+                setDeleteCandidate(null);
+                runAction(
+                  `delete:${task.id}`,
+                  () => deleteTask(task.id),
+                  "Task deleted.",
+                );
+              }}
+              variant="danger"
+            >
+              {deleteCandidate && actionKey === `delete:${deleteCandidate.id}`
+                ? "Deleting..."
+                : "Delete task"}
             </Button>
           </div>
-        </form>
+        </div>
       </Modal>
     </section>
   );

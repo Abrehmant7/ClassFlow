@@ -19,17 +19,17 @@ import { parseApiError } from "../utils/errors.js";
 function CourseSummary({ classCourse }) {
   return (
     <div>
-      <h3 className="text-base font-semibold text-[#020617]">
+      <h3 className="text-base font-semibold text-slate-950">
         {classCourse.course.name}
       </h3>
-      <p className="mt-1 text-sm font-medium text-[#2563EB]">
+      <p className="mt-1 text-sm font-medium text-blue-600">
         {classCourse.course.code}
       </p>
       <div className="mt-3 flex flex-wrap gap-2">
         <StatusBadge value={classCourse.is_default ? "default" : "optional"} />
         <StatusBadge value={classCourse.is_active ? "active" : "inactive"} />
       </div>
-      <p className="mt-3 text-sm text-[#64748B]">
+      <p className="mt-3 text-sm text-slate-500">
         Instructor: {classCourse.instructor_name || "Not set"}
       </p>
     </div>
@@ -175,7 +175,7 @@ function MyCoursesPage() {
         />
         <Link
           to="/classes"
-          className="inline-flex rounded-md bg-[#2563EB] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#1D4ED8] focus:outline-none focus:ring-2 focus:ring-[#2563EB] focus:ring-offset-2"
+          className="inline-flex rounded-md bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2"
         >
           Back to classes
         </Link>
@@ -192,11 +192,11 @@ function MyCoursesPage() {
       ) : null}
 
       {!isApproved(membership) ? (
-        <div className="rounded-md border border-[#FDE68A] bg-[#FFFBEB] p-5">
-          <h2 className="text-lg font-semibold text-[#020617]">
+        <div className="rounded-md border border-amber-200 bg-amber-50 p-5">
+          <h2 className="text-lg font-semibold text-slate-950">
             Membership {membership?.status}
           </h2>
-          <p className="mt-2 text-sm leading-6 text-[#B45309]">
+          <p className="mt-2 text-sm leading-6 text-amber-700">
             Your course registrations are available after a representative
             approves your class membership.
           </p>
@@ -214,24 +214,24 @@ function MyCoursesPage() {
             <Alert type="success" title="Updated" message={success} />
           ) : null}
 
-          <div className="rounded-md border border-[#E2E8F0] bg-white p-5 shadow-sm sm:p-6">
+          <div className="rounded-md border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
             <div className="flex items-center justify-between">
               <div>
-                <h2 className="text-lg font-semibold text-[#020617]">
+                <h2 className="text-lg font-semibold text-slate-950">
                   Active Registrations
                 </h2>
-                <p className="mt-1 text-sm text-[#64748B]">
+                <p className="mt-1 text-sm text-slate-500">
                   Courses you are currently registered in, including courses
                   that were added as defaults.
                 </p>
               </div>
-              <span className="text-sm font-medium text-[#64748B]">
+              <span className="text-sm font-medium text-slate-500">
                 {activeRegistrationCount} active
               </span>
             </div>
 
             {registrations.length === 0 ? (
-              <p className="mt-5 rounded-md border border-dashed border-[#E2E8F0] p-4 text-sm text-[#64748B]">
+              <p className="mt-5 rounded-md border border-dashed border-slate-200 p-4 text-sm text-slate-500">
                 No active course registrations.
               </p>
             ) : (
@@ -243,25 +243,25 @@ function MyCoursesPage() {
                   return (
                   <div
                     key={registration.id}
-                    className="grid gap-4 rounded-md border border-[#E2E8F0] bg-[#f8fafc] p-4 lg:grid-cols-[1fr_auto] lg:items-center"
+                    className="grid gap-4 rounded-md border border-slate-200 bg-slate-50 p-4 lg:grid-cols-[1fr_auto] lg:items-center"
                   >
                     <div>
                       <CourseSummary classCourse={classCourse} />
-                      <p className="mt-3 text-xs font-medium text-[#64748B]">
+                      <p className="mt-3 text-xs font-medium text-slate-500">
                         Registered {new Date(registration.registered_at).toLocaleString()}
                       </p>
                     </div>
                     <div className="flex flex-wrap gap-2 lg:justify-end">
                       {confirmDropId === classCourse.id ? (
-                        <div className="flex flex-wrap items-center gap-2 rounded-md border border-[#FECACA] bg-[#FEF2F2] p-2">
-                          <span className="text-sm font-medium text-[#B91C1C]">
+                        <div className="flex flex-wrap items-center gap-2 rounded-md border border-red-200 bg-red-50 p-2">
+                          <span className="text-sm font-medium text-red-700">
                             Drop?
                           </span>
                           <button
                             type="button"
                             disabled={isBusy}
                             onClick={() => handleDrop(classCourse)}
-                            className="rounded-md bg-[#DC2626] px-3 py-1.5 text-sm font-semibold text-white transition hover:bg-[#B91C1C] focus:outline-none focus:ring-2 focus:ring-[#DC2626] focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+                            className="rounded-md bg-red-600 px-3 py-1.5 text-sm font-semibold text-white transition hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-600 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
                           >
                             {actionKey === `drop:${classCourse.id}`
                               ? "Dropping..."
@@ -271,7 +271,7 @@ function MyCoursesPage() {
                             type="button"
                             disabled={isBusy}
                             onClick={() => setConfirmDropId(null)}
-                            className="rounded-md border border-[#E2E8F0] px-3 py-1.5 text-sm font-semibold text-[#475569] transition hover:bg-white focus:outline-none focus:ring-2 focus:ring-[#2563EB] focus:ring-offset-2"
+                            className="rounded-md border border-slate-200 px-3 py-1.5 text-sm font-semibold text-slate-600 transition hover:bg-white focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2"
                           >
                             Cancel
                           </button>
@@ -280,7 +280,7 @@ function MyCoursesPage() {
                         <button
                           type="button"
                           onClick={() => setConfirmDropId(classCourse.id)}
-                          className="rounded-md border border-[#FECACA] px-4 py-2 text-sm font-semibold text-[#B91C1C] transition hover:bg-[#FEF2F2] focus:outline-none focus:ring-2 focus:ring-[#DC2626] focus:ring-offset-2"
+                          className="rounded-md border border-red-200 px-4 py-2 text-sm font-semibold text-red-700 transition hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-red-600 focus:ring-offset-2"
                         >
                           Drop
                         </button>
@@ -293,23 +293,23 @@ function MyCoursesPage() {
             )}
           </div>
 
-          <div className="rounded-md border border-[#E2E8F0] bg-white p-5 shadow-sm sm:p-6">
+          <div className="rounded-md border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
             <div className="flex items-center justify-between">
               <div>
-                <h2 className="text-lg font-semibold text-[#020617]">
+                <h2 className="text-lg font-semibold text-slate-950">
                   Available Class Courses
                 </h2>
-                <p className="mt-1 text-sm text-[#64748B]">
+                <p className="mt-1 text-sm text-slate-500">
                   Register or re-register any active course in this class.
                 </p>
               </div>
-              <span className="text-sm font-medium text-[#64748B]">
+              <span className="text-sm font-medium text-slate-500">
                 {activeClassCourses.length} active
               </span>
             </div>
 
             {activeClassCourses.length === 0 ? (
-              <p className="mt-5 rounded-md border border-dashed border-[#E2E8F0] p-4 text-sm text-[#64748B]">
+              <p className="mt-5 rounded-md border border-dashed border-slate-200 p-4 text-sm text-slate-500">
                 No active class courses are available.
               </p>
             ) : (
@@ -324,12 +324,12 @@ function MyCoursesPage() {
                   return (
                     <div
                       key={classCourse.id}
-                      className="grid gap-4 rounded-md border border-[#E2E8F0] p-4 lg:grid-cols-[1fr_auto] lg:items-center"
+                      className="grid gap-4 rounded-md border border-slate-200 p-4 lg:grid-cols-[1fr_auto] lg:items-center"
                     >
                       <CourseSummary classCourse={classCourse} />
                       <div className="flex flex-wrap gap-2 lg:justify-end">
                         {isRegistered ? (
-                          <span className="rounded-md border border-[#A7F3D0] bg-[#EFF6FF] px-4 py-2 text-sm font-semibold text-[#047857]">
+                          <span className="rounded-md border border-emerald-200 bg-blue-50 px-4 py-2 text-sm font-semibold text-emerald-700">
                             Registered
                           </span>
                         ) : (
@@ -337,7 +337,7 @@ function MyCoursesPage() {
                             type="button"
                             disabled={isBusy}
                             onClick={() => handleRegister(classCourse)}
-                            className="rounded-md bg-[#2563EB] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#1D4ED8] focus:outline-none focus:ring-2 focus:ring-[#2563EB] focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-[#93C5FD]"
+                            className="rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-blue-300"
                           >
                             {actionKey === `register:${classCourse.id}`
                               ? "Registering..."
@@ -358,3 +358,4 @@ function MyCoursesPage() {
 }
 
 export default MyCoursesPage;
+

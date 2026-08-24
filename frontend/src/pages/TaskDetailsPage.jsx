@@ -29,11 +29,11 @@ import {
 function SelectField({ id, label, name, onChange, value, children }) {
   return (
     <div>
-      <label htmlFor={id} className="block text-sm font-medium text-[#475569]">
+      <label htmlFor={id} className="block text-sm font-medium text-slate-600">
         {label}
       </label>
       <select
-        className="mt-1 block w-full rounded-md border border-[#E2E8F0] bg-white px-3 py-2 text-[#020617] shadow-sm outline-none transition focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/20"
+        className="mt-1 block w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-slate-950 shadow-sm outline-none transition focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20"
         id={id}
         name={name}
         onChange={onChange}
@@ -257,7 +257,7 @@ function TaskDetailsPage() {
         <Alert title="Could not load task" message={error.message} items={error.items} />
         <Link
           to="/classes"
-          className="inline-flex rounded-md bg-[#2563EB] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#1D4ED8] focus:outline-none focus:ring-2 focus:ring-[#2563EB] focus:ring-offset-2"
+          className="inline-flex rounded-md bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2"
         >
           Back to classes
         </Link>
@@ -273,16 +273,16 @@ function TaskDetailsPage() {
 
   return (
     <section className="space-y-6">
-      <div className="rounded-md border border-[#E2E8F0] bg-white p-5 shadow-sm sm:p-6">
+      <div className="rounded-md border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div>
-            <p className="text-sm font-semibold uppercase tracking-wide text-[#2563EB]">
+            <p className="text-sm font-semibold uppercase tracking-wide text-blue-600">
               Task detail
             </p>
-            <h1 className="mt-2 text-3xl font-bold text-[#020617]">
+            <h1 className="mt-2 text-3xl font-bold text-slate-950">
               {task.title}
             </h1>
-            <p className="mt-3 max-w-2xl text-base leading-7 text-[#64748B]">
+            <p className="mt-3 max-w-2xl text-base leading-7 text-slate-500">
               {task.description || "No description"}
             </p>
           </div>
@@ -297,34 +297,34 @@ function TaskDetailsPage() {
 
         <dl className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <div>
-            <dt className="text-xs font-semibold uppercase tracking-wide text-[#64748B]">
+            <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">
               Course
             </dt>
-            <dd className="mt-1 text-sm font-medium text-[#020617]">
+            <dd className="mt-1 text-sm font-medium text-slate-950">
               {task.course ? `${task.course.code} - ${task.course.name}` : "No course"}
             </dd>
           </div>
           <div>
-            <dt className="text-xs font-semibold uppercase tracking-wide text-[#64748B]">
+            <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">
               Deadline
             </dt>
-            <dd className="mt-1 text-sm font-medium text-[#020617]">
+            <dd className="mt-1 text-sm font-medium text-slate-950">
               {formatDeadline(task.deadline)}
             </dd>
           </div>
           <div>
-            <dt className="text-xs font-semibold uppercase tracking-wide text-[#64748B]">
+            <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">
               Creator
             </dt>
-            <dd className="mt-1 text-sm font-medium text-[#020617]">
+            <dd className="mt-1 text-sm font-medium text-slate-950">
               {getCreatorName(task.creator)}
             </dd>
           </div>
           <div>
-            <dt className="text-xs font-semibold uppercase tracking-wide text-[#64748B]">
+            <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">
               Class
             </dt>
-            <dd className="mt-1 text-sm font-medium text-[#020617]">
+            <dd className="mt-1 text-sm font-medium text-slate-950">
               #{task.classroom_id}
             </dd>
           </div>
@@ -340,9 +340,9 @@ function TaskDetailsPage() {
       ) : null}
       {success ? <Alert type="success" title="Updated" message={success} /> : null}
 
-      <div className="rounded-md border border-[#E2E8F0] bg-white p-5 shadow-sm sm:p-6">
-        <h2 className="text-lg font-semibold text-[#020617]">Progress</h2>
-        <p className="mt-1 text-sm text-[#64748B]">
+      <div className="rounded-md border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+        <h2 className="text-lg font-semibold text-slate-950">Progress</h2>
+        <p className="mt-1 text-sm text-slate-500">
           Mark shared tasks complete for yourself. Personal tasks are completed
           through the personal task editor.
         </p>
@@ -353,7 +353,7 @@ function TaskDetailsPage() {
                 type="button"
                 disabled={isClosed || actionKey === "progress:completed"}
                 onClick={() => handleProgress("completed")}
-                className="rounded-md bg-[#2563EB] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#1D4ED8] focus:outline-none focus:ring-2 focus:ring-[#2563EB] focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-[#93C5FD]"
+                className="rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-blue-300"
               >
                 {actionKey === "progress:completed"
                   ? "Saving..."
@@ -363,7 +363,7 @@ function TaskDetailsPage() {
                 type="button"
                 disabled={isClosed || actionKey === "progress:pending"}
                 onClick={() => handleProgress("pending")}
-                className="rounded-md border border-[#E2E8F0] px-4 py-2 text-sm font-semibold text-[#475569] transition hover:bg-white focus:outline-none focus:ring-2 focus:ring-[#2563EB] focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+                className="rounded-md border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 transition hover:bg-white focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {actionKey === "progress:pending" ? "Saving..." : "Mark pending"}
               </button>
@@ -375,8 +375,8 @@ function TaskDetailsPage() {
       </div>
 
       {canManage && isShared ? (
-        <div className="rounded-md border border-[#E2E8F0] bg-white p-5 shadow-sm sm:p-6">
-          <h2 className="text-lg font-semibold text-[#020617]">
+        <div className="rounded-md border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+          <h2 className="text-lg font-semibold text-slate-950">
             Representative Controls
           </h2>
           <div className="mt-4 flex flex-wrap gap-2">
@@ -384,7 +384,7 @@ function TaskDetailsPage() {
               type="button"
               disabled={actionKey === "status:cancelled"}
               onClick={() => handleStatus("cancelled")}
-              className="rounded-md border border-[#FECACA] px-4 py-2 text-sm font-semibold text-[#B91C1C] transition hover:bg-[#FEF2F2] focus:outline-none focus:ring-2 focus:ring-[#DC2626] focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+              className="rounded-md border border-red-200 px-4 py-2 text-sm font-semibold text-red-700 transition hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-red-600 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
             >
               {actionKey === "status:cancelled" ? "Saving..." : "Cancel task"}
             </button>
@@ -392,7 +392,7 @@ function TaskDetailsPage() {
               type="button"
               disabled={actionKey === "status:archived"}
               onClick={() => handleStatus("archived")}
-              className="rounded-md border border-[#E2E8F0] px-4 py-2 text-sm font-semibold text-[#475569] transition hover:bg-white focus:outline-none focus:ring-2 focus:ring-[#2563EB] focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+              className="rounded-md border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 transition hover:bg-white focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
             >
               {actionKey === "status:archived" ? "Saving..." : "Archive task"}
             </button>
@@ -401,7 +401,7 @@ function TaskDetailsPage() {
                 type="button"
                 disabled={actionKey === "status:active"}
                 onClick={() => handleStatus("active")}
-                className="rounded-md bg-[#2563EB] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#1D4ED8] focus:outline-none focus:ring-2 focus:ring-[#2563EB] focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-[#93C5FD]"
+                className="rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-blue-300"
               >
                 {actionKey === "status:active" ? "Saving..." : "Reopen task"}
               </button>
@@ -411,8 +411,8 @@ function TaskDetailsPage() {
       ) : null}
 
       {canManage ? (
-        <div className="rounded-md border border-[#E2E8F0] bg-white p-5 shadow-sm sm:p-6">
-          <h2 className="text-lg font-semibold text-[#020617]">
+        <div className="rounded-md border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+          <h2 className="text-lg font-semibold text-slate-950">
             {isPersonal ? "Personal Task Editor" : "Task Editor"}
           </h2>
           <form className="mt-5 space-y-4" onSubmit={handleSave}>
@@ -485,15 +485,15 @@ function TaskDetailsPage() {
             <div className="flex flex-col gap-2 sm:flex-row sm:justify-between">
               {isPersonal ? (
                 confirmDelete ? (
-                  <div className="flex flex-wrap items-center gap-2 rounded-md border border-[#FECACA] bg-[#FEF2F2] p-2">
-                    <span className="text-sm font-medium text-[#B91C1C]">
+                  <div className="flex flex-wrap items-center gap-2 rounded-md border border-red-200 bg-red-50 p-2">
+                    <span className="text-sm font-medium text-red-700">
                       Delete?
                     </span>
                     <button
                       type="button"
                       disabled={actionKey === "delete-task"}
                       onClick={handleDeleteTask}
-                      className="rounded-md bg-[#DC2626] px-3 py-1.5 text-sm font-semibold text-white transition hover:bg-[#B91C1C] focus:outline-none focus:ring-2 focus:ring-[#DC2626] focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+                      className="rounded-md bg-red-600 px-3 py-1.5 text-sm font-semibold text-white transition hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-600 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
                     >
                       {actionKey === "delete-task" ? "Deleting..." : "Yes"}
                     </button>
@@ -501,7 +501,7 @@ function TaskDetailsPage() {
                       type="button"
                       disabled={actionKey === "delete-task"}
                       onClick={() => setConfirmDelete(false)}
-                      className="rounded-md border border-[#E2E8F0] px-3 py-1.5 text-sm font-semibold text-[#475569] transition hover:bg-white focus:outline-none focus:ring-2 focus:ring-[#2563EB] focus:ring-offset-2"
+                      className="rounded-md border border-slate-200 px-3 py-1.5 text-sm font-semibold text-slate-600 transition hover:bg-white focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2"
                     >
                       Cancel
                     </button>
@@ -510,7 +510,7 @@ function TaskDetailsPage() {
                   <button
                     type="button"
                     onClick={() => setConfirmDelete(true)}
-                    className="rounded-md border border-[#FECACA] px-4 py-2 text-sm font-semibold text-[#B91C1C] transition hover:bg-[#FEF2F2] focus:outline-none focus:ring-2 focus:ring-[#DC2626] focus:ring-offset-2"
+                    className="rounded-md border border-red-200 px-4 py-2 text-sm font-semibold text-red-700 transition hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-red-600 focus:ring-offset-2"
                   >
                     Delete personal task
                   </button>
@@ -521,7 +521,7 @@ function TaskDetailsPage() {
               <button
                 type="submit"
                 disabled={isSaving}
-                className="rounded-md bg-[#2563EB] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[#1D4ED8] focus:outline-none focus:ring-2 focus:ring-[#2563EB] focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-[#93C5FD]"
+                className="rounded-md bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-blue-300"
               >
                 {isSaving ? "Saving..." : "Save task"}
               </button>
@@ -530,35 +530,35 @@ function TaskDetailsPage() {
         </div>
       ) : null}
 
-      <div className="rounded-md border border-[#E2E8F0] bg-white p-5 shadow-sm sm:p-6">
+      <div className="rounded-md border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h2 className="text-lg font-semibold text-[#020617]">
+            <h2 className="text-lg font-semibold text-slate-950">
               Attachments
             </h2>
-            <p className="mt-1 text-sm text-[#64748B]">
+            <p className="mt-1 text-sm text-slate-500">
               Download files attached to this task.
             </p>
           </div>
-          <span className="text-sm font-medium text-[#64748B]">
+          <span className="text-sm font-medium text-slate-500">
             {task.attachments.length} files
           </span>
         </div>
 
         {canManage ? (
           <form
-            className="mt-5 flex flex-col gap-3 rounded-md border border-[#E2E8F0] bg-[#f8fafc] p-4 sm:flex-row sm:items-end"
+            className="mt-5 flex flex-col gap-3 rounded-md border border-slate-200 bg-slate-50 p-4 sm:flex-row sm:items-end"
             onSubmit={handleUpload}
           >
             <div className="flex-1">
               <label
                 htmlFor="task-attachment"
-                className="block text-sm font-medium text-[#475569]"
+                className="block text-sm font-medium text-slate-600"
               >
                 Upload attachment
               </label>
               <input
-                className="mt-1 block w-full rounded-md border border-[#E2E8F0] bg-white px-3 py-2 text-sm text-[#020617] shadow-sm file:mr-3 file:rounded-md file:border-0 file:bg-[#EFF6FF] file:px-3 file:py-1.5 file:text-sm file:font-semibold file:text-[#1D4ED8] focus:outline-none focus:ring-2 focus:ring-[#2563EB] focus:ring-offset-2"
+                className="mt-1 block w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-950 shadow-sm file:mr-3 file:rounded-md file:border-0 file:bg-blue-50 file:px-3 file:py-1.5 file:text-sm file:font-semibold file:text-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2"
                 id="task-attachment"
                 onChange={(event) => setSelectedFile(event.target.files?.[0] || null)}
                 type="file"
@@ -567,7 +567,7 @@ function TaskDetailsPage() {
             <button
               type="submit"
               disabled={isUploading}
-              className="rounded-md bg-[#2563EB] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[#1D4ED8] focus:outline-none focus:ring-2 focus:ring-[#2563EB] focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-[#93C5FD]"
+              className="rounded-md bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-blue-300"
             >
               {isUploading ? "Uploading..." : "Upload"}
             </button>
@@ -575,21 +575,21 @@ function TaskDetailsPage() {
         ) : null}
 
         {task.attachments.length === 0 ? (
-          <p className="mt-5 rounded-md border border-dashed border-[#E2E8F0] p-4 text-sm text-[#64748B]">
+          <p className="mt-5 rounded-md border border-dashed border-slate-200 p-4 text-sm text-slate-500">
             No attachments yet.
           </p>
         ) : (
           <div className="mt-5 space-y-3">
             {task.attachments.map((attachment) => (
               <div
-                className="grid gap-3 rounded-md border border-[#E2E8F0] p-4 lg:grid-cols-[1fr_auto] lg:items-center"
+                className="grid gap-3 rounded-md border border-slate-200 p-4 lg:grid-cols-[1fr_auto] lg:items-center"
                 key={attachment.id}
               >
                 <div>
-                  <p className="text-sm font-semibold text-[#020617]">
+                  <p className="text-sm font-semibold text-slate-950">
                     {attachment.file_name}
                   </p>
-                  <p className="mt-1 text-xs text-[#64748B]">
+                  <p className="mt-1 text-xs text-slate-500">
                     {attachment.file_type} - {formatFileSize(attachment.file_size)}
                   </p>
                 </div>
@@ -598,7 +598,7 @@ function TaskDetailsPage() {
                     type="button"
                     disabled={actionKey === `download:${attachment.id}`}
                     onClick={() => handleDownload(attachment)}
-                    className="rounded-md bg-[#2563EB] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#1D4ED8] focus:outline-none focus:ring-2 focus:ring-[#2563EB] focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-[#93C5FD]"
+                    className="rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-blue-300"
                   >
                     {actionKey === `download:${attachment.id}`
                       ? "Downloading..."
@@ -606,15 +606,15 @@ function TaskDetailsPage() {
                   </button>
                   {canManage ? (
                     confirmAttachmentId === attachment.id ? (
-                      <div className="flex flex-wrap items-center gap-2 rounded-md border border-[#FECACA] bg-[#FEF2F2] p-2">
-                        <span className="text-sm font-medium text-[#B91C1C]">
+                      <div className="flex flex-wrap items-center gap-2 rounded-md border border-red-200 bg-red-50 p-2">
+                        <span className="text-sm font-medium text-red-700">
                           Delete?
                         </span>
                         <button
                           type="button"
                           disabled={actionKey === `attachment:${attachment.id}`}
                           onClick={() => handleDeleteAttachment(attachment.id)}
-                          className="rounded-md bg-[#DC2626] px-3 py-1.5 text-sm font-semibold text-white transition hover:bg-[#B91C1C] focus:outline-none focus:ring-2 focus:ring-[#DC2626] focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+                          className="rounded-md bg-red-600 px-3 py-1.5 text-sm font-semibold text-white transition hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-600 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
                         >
                           {actionKey === `attachment:${attachment.id}`
                             ? "Deleting..."
@@ -624,7 +624,7 @@ function TaskDetailsPage() {
                           type="button"
                           disabled={actionKey === `attachment:${attachment.id}`}
                           onClick={() => setConfirmAttachmentId(null)}
-                          className="rounded-md border border-[#E2E8F0] px-3 py-1.5 text-sm font-semibold text-[#475569] transition hover:bg-white focus:outline-none focus:ring-2 focus:ring-[#2563EB] focus:ring-offset-2"
+                          className="rounded-md border border-slate-200 px-3 py-1.5 text-sm font-semibold text-slate-600 transition hover:bg-white focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2"
                         >
                           Cancel
                         </button>
@@ -633,7 +633,7 @@ function TaskDetailsPage() {
                       <button
                         type="button"
                         onClick={() => setConfirmAttachmentId(attachment.id)}
-                        className="rounded-md border border-[#FECACA] px-4 py-2 text-sm font-semibold text-[#B91C1C] transition hover:bg-[#FEF2F2] focus:outline-none focus:ring-2 focus:ring-[#DC2626] focus:ring-offset-2"
+                        className="rounded-md border border-red-200 px-4 py-2 text-sm font-semibold text-red-700 transition hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-red-600 focus:ring-offset-2"
                       >
                         Delete
                       </button>
@@ -650,3 +650,4 @@ function TaskDetailsPage() {
 }
 
 export default TaskDetailsPage;
+

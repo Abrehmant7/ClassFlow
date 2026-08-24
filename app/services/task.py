@@ -68,6 +68,7 @@ class TaskService:
         if task_in.visibility != TASK_VISIBILITY_PERSONAL:
             raise ClassFlowError("Only personal tasks can be created here", "PERSONAL_TASK_REQUIRED", status.HTTP_422_UNPROCESSABLE_CONTENT)
 
+        print("this works")
         return await self._create_task(classroom_id=task_in.classroom_id, task_in=task_in, user_id=user_id)
 
     async def complete_personal_task(self, task_id: int, user_id: int) -> TaskRead:
@@ -76,12 +77,14 @@ class TaskService:
         membership = await self._get_membership_for_task(task, user_id)
         await self._require_can_manage_task(task, membership, user_id)
         self._require_personal_task(task)
+        print("this works")
 
         if task.status != TASK_STATUS_COMPLETED or task.completed_at is None:
             task.status = TASK_STATUS_COMPLETED
             task.completed_at = datetime.now(timezone.utc)
             await self.session.flush()
             await self.session.commit()
+        print("this works")
 
         task = await self._get_task_or_404(task.id)
         return await self._build_task_read(task, membership, user_id, include_attachments=True)
@@ -98,6 +101,7 @@ class TaskService:
             task.completed_at = None
             await self.session.flush()
             await self.session.commit()
+            
 
         task = await self._get_task_or_404(task.id)
         return await self._build_task_read(task, membership, user_id, include_attachments=True)
