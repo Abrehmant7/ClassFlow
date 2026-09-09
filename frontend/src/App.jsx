@@ -7,6 +7,7 @@ import DashboardPage from "./pages/DashboardPage.jsx";
 import LoginPage from "./pages/LoginPage.jsx";
 import RegisterPage from "./pages/RegisterPage.jsx";
 import ClassDetailsPage from "./pages/ClassDetailsPage.jsx";
+import ClassChatPage from "./pages/ClassChatPage.jsx";
 import ClassCoursesPage from "./pages/ClassCoursesPage.jsx";
 import CourseCataloguePage from "./pages/CourseCataloguePage.jsx";
 import CreateClassPage from "./pages/CreateClassPage.jsx";
@@ -35,6 +36,7 @@ function App() {
           <Route path="/classes/new" element={<CreateClassPage />} />
           <Route path="/classes/join" element={<JoinClassPage />} />
           <Route path="/classes/:classId" element={<ClassOverviewPage />} />
+          <Route path="/classes/:classId/chat" element={<ClassChatPage />} />
           <Route path="/classes/:classId/courses" element={<ClassCoursesPage />} />
           <Route path="/classes/:classId/my-courses" element={<MyCoursesPage />} />
           <Route path="/classes/:classId/tasks" element={<ClassTasksPage />} />
