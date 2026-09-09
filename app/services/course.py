@@ -16,6 +16,7 @@ from app.schemas.course import (
     CourseRead,
     CourseRegistrationRead,
 )
+from app.services.rag import RagChatService
 
 
 class CourseService:
@@ -25,11 +26,13 @@ class CourseService:
         class_course_repository: ClassCourseRepository,
         registration_repository: CourseRegistrationRepository,
         membership_repository: ClassMembershipRepository,
+        rag_service: RagChatService | None = None,
     ) -> None:
         self.course_repository = course_repository
         self.class_course_repository = class_course_repository
         self.registration_repository = registration_repository
         self.membership_repository = membership_repository
+        self.rag_service = rag_service
         self.session = course_repository.session
 
     async def list_courses(self, search: str | None = None) -> list[CourseRead]:
@@ -115,7 +118,10 @@ class CourseService:
             )
             await registration_service.register_existing_approved_members_for_default_course(class_course)
 
-        await self.session.commit()
+        if self.rag_service is not None:
+            await self.rag_service.index_class_course(class_course, course=course)
+        else:
+            await self.session.commit()
         class_course = await self.class_course_repository.get_by_id(class_course.id)
         return ClassCourseRead.model_validate(class_course)
 
@@ -140,7 +146,10 @@ class CourseService:
             )
             await registration_service.register_existing_approved_members_for_default_course(class_course)
 
-        await self.session.commit()
+        if self.rag_service is not None:
+            await self.rag_service.index_class_course(class_course)
+        else:
+            await self.session.commit()
         class_course = await self.class_course_repository.get_by_id(class_course.id)
         return ClassCourseRead.model_validate(class_course)
 
@@ -150,7 +159,10 @@ class CourseService:
         await self._require_same_class_representative(user_id, class_course.classroom_id)
 
         await self.class_course_repository.deactivate(class_course)
-        await self.session.commit()
+        if self.rag_service is not None:
+            await self.rag_service.index_class_course(class_course)
+        else:
+            await self.session.commit()
 
     async def _get_class_course_or_404(self, class_course_id: int) -> ClassCourse:
         class_course = await self.class_course_repository.get_by_id(class_course_id)

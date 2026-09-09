@@ -6,6 +6,7 @@ from app.models.refresh_token import RefreshToken
 from app.models.task import Task, TaskAttachment, TaskProgress
 from app.models.user import User
 from app.models.password_reset_token import PasswordResetToken
+from app.models.resource import Resource, RagChunk
 
 __all__ = [
     "ClassMembership",
@@ -18,5 +19,7 @@ __all__ = [
     "TaskAttachment",
     "TaskProgress",
     "User",
-    "PasswordResetToken"
+    "PasswordResetToken",
+    "Resource",
+    "RagChunk"
 ]

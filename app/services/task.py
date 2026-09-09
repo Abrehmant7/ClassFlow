@@ -36,6 +36,7 @@ from app.schemas.task import (
     TaskRead,
     TaskUpdate,
 )
+from app.services.rag import RagChatService
 
 
 class TaskService:
@@ -47,6 +48,7 @@ class TaskService:
         membership_repository: ClassMembershipRepository,
         class_course_repository: ClassCourseRepository,
         registration_repository: CourseRegistrationRepository,
+        rag_service: RagChatService | None = None,
     ) -> None:
         self.task_repository = task_repository
         self.progress_repository = progress_repository
@@ -54,6 +56,7 @@ class TaskService:
         self.membership_repository = membership_repository
         self.class_course_repository = class_course_repository
         self.registration_repository = registration_repository
+        self.rag_service = rag_service
         self.session = task_repository.session
 
     async def create_class_task(self, classroom_id: int, task_in: TaskCreate, user_id: int) -> TaskRead:
@@ -120,7 +123,10 @@ class TaskService:
             task_in=task_in,
             created_by_user_id=user_id,
         )
-        await self.session.commit()
+        if self.rag_service is not None and task.visibility == TASK_VISIBILITY_SHARED:
+            await self.rag_service.index_task(task)
+        else:
+            await self.session.commit()
 
         task = await self._get_task_or_404(task.id)
         return await self._build_task_read(task, membership, user_id, include_attachments=True)
@@ -189,7 +195,10 @@ class TaskService:
             self._apply_personal_completion_timestamp(task, update_data.get("status"))
 
         task = await self.task_repository.update(task, task_in)
-        await self.session.commit()
+        if self.rag_service is not None and task.visibility == TASK_VISIBILITY_SHARED:
+            await self.rag_service.index_task(task)
+        else:
+            await self.session.commit()
 
         task = await self._get_task_or_404(task.id)
         return await self._build_task_read(task, membership, user_id, include_attachments=True)
@@ -267,7 +276,14 @@ class TaskService:
                 file_type=file_type,
                 file_size=len(file_bytes),
             )
-            await self.session.commit()
+            if self.rag_service is not None:
+                await self.rag_service.index_task_attachment(
+                    task=task,
+                    attachment=attachment,
+                    file_bytes=file_bytes,
+                )
+            else:
+                await self.session.commit()
             return TaskAttachmentRead.model_validate(attachment)
         except Exception:
             await self.session.rollback()
@@ -309,7 +325,10 @@ class TaskService:
 
         file_path = self._attachment_path(attachment.storage_key)
         await self.attachment_repository.delete(attachment)
-        await self.session.commit()
+        if self.rag_service is not None:
+            await self.rag_service.delete_task_attachment(attachment.id)
+        else:
+            await self.session.commit()
         self._delete_file_if_present(file_path)
 
     async def _get_task_or_404(self, task_id: int) -> Task:

@@ -12,6 +12,7 @@ from app.repositories.course import ClassCourseRepository, CourseRegistrationRep
 from app.repositories.membership import ClassMembershipRepository
 from app.repositories.task import TaskAttachmentRepository, TaskProgressRepository, TaskRepository
 from app.schemas.task import PersonalTaskCreate, TaskAttachmentRead, TaskCreate, TaskListItem, TaskProgressUpdate, TaskRead, TaskUpdate
+from app.services.rag import RagChatService
 from app.services.task import TaskService
 
 router = APIRouter(tags=["tasks"])
@@ -25,6 +26,7 @@ def get_task_service(session: AsyncSession) -> TaskService:
         membership_repository=ClassMembershipRepository(session),
         class_course_repository=ClassCourseRepository(session),
         registration_repository=CourseRegistrationRepository(session),
+        rag_service=RagChatService(session),
     )
 
 

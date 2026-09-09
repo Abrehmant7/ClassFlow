@@ -23,7 +23,22 @@ class Settings(BaseSettings):
 
     OPENAI_API_KEY: str | None = None
     GEMINI_API_KEY: str | None = None
+    GEMINI_GENERATION_MODEL: str = "gemini-2.5-flash-lite"
+    GEMINI_EMBEDDING_MODEL: str = "gemini-embedding-001"
     VECTOR_STORE_PROVIDER: str = "pgvector"
+    RAG_EMBEDDING_DIMENSIONS: int = 768
+    RAG_EMBEDDING_BATCH_SIZE: int = 20
+    RAG_TOP_K: int = 5
+    RAG_MAX_DISTANCE: float = 0.8
+    RAG_CHUNK_SIZE: int = 1000
+    RAG_CHUNK_OVERLAP: int = 150
+    RAG_MAX_OUTPUT_TOKENS: int = 800
+    RAG_MAX_DOCUMENT_PAGES: int = 200
+    RAG_MAX_EXTRACTED_CHARACTERS: int = 500_000
+    RAG_CHAT_FILE_MAX_SIZE_BYTES: int = 5 * 1024 * 1024
+    RAG_CHAT_FILE_MAX_PAGES: int = 100
+    RAG_CHAT_FILE_MAX_EXTRACTED_CHARACTERS: int = 200_000
+    RAG_CHAT_FILE_MAX_CHUNKS: int = 200
 
     TASK_ATTACHMENT_STORAGE_DIR: str = "storage/task_attachments"
     TASK_ATTACHMENT_MAX_SIZE_BYTES: int = 10 * 1024 * 1024

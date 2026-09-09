@@ -200,6 +200,15 @@ class FakeRegistrationRepository:
         return object_with_attrs(is_active=True)
 
 
+class FakeRagService:
+    def __init__(self) -> None:
+        self.indexed_tasks: list[tuple[int, str, str]] = []
+
+    async def index_task(self, task: Task) -> int:
+        self.indexed_tasks.append((task.id, task.title, task.status))
+        return 1
+
+
 def object_with_attrs(**attrs):
     return type("ObjectWithAttrs", (), attrs)()
 
@@ -294,6 +303,7 @@ def make_service(
     active_registration_keys: set[tuple[int, int]] | None = None,
     progress_repository: FakeProgressRepository | None = None,
     attachment_repository: FakeAttachmentRepository | None = None,
+    rag_service: FakeRagService | None = None,
 ) -> TaskService:
     return TaskService(
         task_repository=FakeTaskRepository(tasks),
@@ -302,7 +312,43 @@ def make_service(
         membership_repository=FakeMembershipRepository(memberships),
         class_course_repository=FakeClassCourseRepository(class_courses or {}),
         registration_repository=FakeRegistrationRepository(active_registration_keys),
+        rag_service=rag_service,
     )
+
+
+@pytest.mark.anyio
+async def test_shared_task_create_and_update_refresh_the_rag_index() -> None:
+    representative = make_membership(
+        1,
+        user_id=10,
+        classroom_id=1,
+        role=CLASS_ROLE_REPRESENTATIVE,
+    )
+    rag_service = FakeRagService()
+    service = make_service(
+        memberships=[representative],
+        rag_service=rag_service,
+    )
+
+    created = await service.create_class_task(
+        classroom_id=1,
+        task_in=TaskCreate(
+            title="Initial assignment title",
+            description="Initial requirements",
+            visibility=TASK_VISIBILITY_SHARED,
+        ),
+        user_id=10,
+    )
+    await service.update_task(
+        created.id,
+        TaskUpdate(title="Updated assignment title"),
+        user_id=10,
+    )
+
+    assert rag_service.indexed_tasks == [
+        (created.id, "Initial assignment title", TASK_STATUS_ACTIVE),
+        (created.id, "Updated assignment title", TASK_STATUS_ACTIVE),
+    ]
 
 
 @pytest.mark.anyio
