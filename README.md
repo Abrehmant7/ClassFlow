@@ -1,6 +1,6 @@
 # ClassFlow
 
-ClassFlow is an academic coordination app with a FastAPI/PostgreSQL backend and a React frontend. It supports authentication, classrooms, memberships, course registration, tasks, attachments, and a personal academic feed. Future modules will add announcements, resources, notifications, dashboards, and class-scoped RAG chat.
+ClassFlow is an academic coordination app with a FastAPI/PostgreSQL backend and a React frontend. It supports authentication, classrooms, memberships, course registration, tasks, attachments, a personal academic feed, announcements, private PDF resources, and class-scoped RAG indexing.
 
 ## Current Capabilities
 
@@ -18,6 +18,9 @@ Backend:
 - Dropped class-course tasks are hidden rather than automatically closed
 - Task attachments with file validation and permission checks
 - Personal feed with summary counts, filtering, pagination, due grouping, and search
+- Class-wide and course-scoped announcements with representative management
+- Private PDF resource upload, authorized download, indexing status, and retry
+- Announcement and resource ingestion into permission-aware RAG retrieval
 
 Frontend:
 
@@ -164,6 +167,25 @@ GET /api/v1/feed/summary
 GET /api/v1/feed/filter-options
 ```
 
+Announcements and resources:
+
+```text
+POST   /api/v1/classes/{class_id}/announcements
+GET    /api/v1/classes/{class_id}/announcements
+GET    /api/v1/announcements/{announcement_id}
+PATCH  /api/v1/announcements/{announcement_id}
+DELETE /api/v1/announcements/{announcement_id}
+POST   /api/v1/classes/{class_id}/resources
+GET    /api/v1/classes/{class_id}/resources
+GET    /api/v1/resources/{resource_id}
+GET    /api/v1/resources/{resource_id}/download
+PATCH  /api/v1/resources/{resource_id}
+DELETE /api/v1/resources/{resource_id}
+POST   /api/v1/resources/{resource_id}/reindex
+```
+
+Resource files are stored outside public static directories and are served only after API authorization. Set the `CLASSFLOW_COURSE_RESOURCE_*` variables shown in `.env.example` for the private storage directory and PDF limits.
+
 ## Database Notes
 
 Database schema is managed through Alembic. Do not use `Base.metadata.create_all(...)` in application startup.
@@ -191,6 +213,13 @@ Focused task/feed tests:
 
 ```powershell
 .\myvenv\Scripts\python.exe -m pytest tests\test_tasks_and_attachments.py tests\test_feed.py tests\test_health.py
+```
+
+Focused announcement/resource tests:
+
+```powershell
+$env:CLASSFLOW_TEST_DATABASE_URL = "postgresql+asyncpg://..."
+.\myvenv\Scripts\python.exe -m pytest tests\test_resource_storage.py tests\test_module6_persistence.py tests\test_announcements.py tests\test_resources.py
 ```
 
 Frontend build:

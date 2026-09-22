@@ -40,6 +40,11 @@ class Settings(BaseSettings):
     RAG_CHAT_FILE_MAX_EXTRACTED_CHARACTERS: int = 200_000
     RAG_CHAT_FILE_MAX_CHUNKS: int = 200
 
+    COURSE_RESOURCE_STORAGE_DIR: str = "storage/course_resources"
+    COURSE_RESOURCE_MAX_SIZE_BYTES: int = Field(default=10 * 1024 * 1024, gt=0)
+    COURSE_RESOURCE_ALLOWED_EXTENSIONS: list[str] = Field(default_factory=lambda: ["pdf"])
+    COURSE_RESOURCE_ALLOWED_CONTENT_TYPES: list[str] = Field(default_factory=lambda: ["application/pdf"])
+
     TASK_ATTACHMENT_STORAGE_DIR: str = "storage/task_attachments"
     TASK_ATTACHMENT_MAX_SIZE_BYTES: int = 10 * 1024 * 1024
     TASK_ATTACHMENT_ALLOWED_EXTENSIONS: list[str] = Field(

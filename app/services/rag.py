@@ -1,5 +1,8 @@
 import re
+import logging
 from dataclasses import dataclass
+from datetime import datetime, timezone
+from hashlib import sha256
 from math import sqrt
 from pathlib import Path
 
@@ -15,20 +18,32 @@ from app.ai.loaders import (
 from app.ai.text_splitter import split_text
 from app.core.config import settings
 from app.core.exceptions import ClassFlowError
+from app.models.announcement import Announcement
 from app.models.course import ClassCourse, Course
 from app.models.resource import (
+    RAG_SOURCE_ANNOUNCEMENT,
     RAG_SOURCE_COURSE,
     RAG_SOURCE_RESOURCE,
     RAG_SOURCE_TASK,
     RAG_SOURCE_TASK_ATTACHMENT,
+    RESOURCE_INDEX_FAILED,
+    RESOURCE_INDEX_INDEXED,
+    RESOURCE_INDEX_PENDING,
+    RESOURCE_INDEX_PROCESSING,
+    Resource,
 )
 from app.models.task import TASK_STATUS_ACTIVE, TASK_VISIBILITY_SHARED, Task, TaskAttachment
 from app.repositories.rag import RagRepository
+from app.repositories.resource import ResourceRepository
 from app.schemas.chat import ChatResponse, ChatSource
+from app.services.resource_storage import resource_file_path
+
+logger = logging.getLogger(__name__)
 
 NO_CONTEXT_ANSWER = "I could not find that information in the class materials available to you."
 SOURCE_CITATION_PATTERN = re.compile(r"\[((?:\d+\s*,\s*)*\d+)\]")
 ALLOWED_SOURCE_TYPES = {
+    RAG_SOURCE_ANNOUNCEMENT,
     RAG_SOURCE_TASK,
     RAG_SOURCE_TASK_ATTACHMENT,
     RAG_SOURCE_RESOURCE,
@@ -63,6 +78,125 @@ class RagChatService:
         self.session = session
         self.repository = repository or RagRepository(session)
         self.ai_client = ai_client or GeminiClient()
+
+    async def index_announcement(self, announcement: Announcement) -> int:
+        """Stage replacement chunks in the announcement service's transaction."""
+        chunks = split_text(
+            f"Announcement: {announcement.title}\nBody: {announcement.body}",
+            chunk_size=settings.RAG_CHUNK_SIZE,
+            chunk_overlap=settings.RAG_CHUNK_OVERLAP,
+        )
+        embeddings = await self.ai_client.embed_documents(chunks, title=announcement.title)
+        await self.repository.replace_source_chunks(
+            classroom_id=announcement.classroom_id,
+            class_course_id=announcement.class_course_id,
+            source_type=RAG_SOURCE_ANNOUNCEMENT,
+            source_id=announcement.id,
+            chunks=chunks,
+            embeddings=embeddings,
+            source_title=announcement.title,
+        )
+        return len(chunks)
+
+    async def delete_announcement(self, announcement_id: int) -> None:
+        """Stage chunk deletion; the announcement service owns the commit."""
+        await self.repository.delete_source_chunks(RAG_SOURCE_ANNOUNCEMENT, announcement_id)
+
+    async def index_resource(self, resource: Resource) -> int:
+        """Index a durable upload; extraction/provider failure preserves its download."""
+        resource_id = resource.id
+        resources = ResourceRepository(self.session)
+        try:
+            resource = await resources.get_by_id(resource_id, for_update=True)
+            if resource is None:
+                return 0
+            if not resource.is_enabled:
+                await self.delete_resource(resource_id)
+                resource.indexing_status = RESOURCE_INDEX_PENDING
+                resource.indexing_error = None
+                resource.indexed_at = None
+                await self.session.commit()
+                return 0
+            resource.indexing_status = RESOURCE_INDEX_PROCESSING
+            resource.indexing_error = None
+            resource.indexed_at = None
+            await self.session.commit()
+
+            # Serialize indexing with updates/deletion. Re-fetch after committing
+            # processing so a concurrent deletion cannot leave orphan chunks.
+            resource = await resources.get_by_id(resource_id, for_update=True)
+            if resource is None:
+                return 0
+            if not resource.is_enabled:
+                await self.session.commit()
+                return 0
+            with resource_file_path(resource.storage_key).open("rb") as pdf:
+                file_bytes = pdf.read(settings.COURSE_RESOURCE_MAX_SIZE_BYTES + 1)
+            if len(file_bytes) > settings.COURSE_RESOURCE_MAX_SIZE_BYTES:
+                raise DocumentTooLargeError("Resource PDF exceeds the size limit")
+            checksum = sha256(file_bytes).hexdigest()
+            if resource.checksum_sha256 is not None and resource.checksum_sha256 != checksum:
+                raise DocumentExtractionError("Resource PDF checksum does not match")
+            sections = extract_document_sections(resource.file_name, file_bytes)
+            chunks: list[str] = []
+            page_numbers: list[int | None] = []
+            for section in sections:
+                for chunk in split_text(section.text, settings.RAG_CHUNK_SIZE, settings.RAG_CHUNK_OVERLAP):
+                    context = [f"Resource: {resource.title}", f"File: {resource.file_name}"]
+                    if resource.description:
+                        context.append(f"Description: {resource.description}")
+                    if section.page_number is not None:
+                        context.append(f"Page: {section.page_number}")
+                    context.append(f"Content: {chunk}")
+                    chunks.append("\n".join(context))
+                    page_numbers.append(section.page_number)
+            if not chunks:
+                raise DocumentExtractionError("Resource contains no extractable text")
+            embeddings = await self.ai_client.embed_documents(chunks, title=resource.title)
+            await self.repository.replace_source_chunks(
+                classroom_id=resource.classroom_id,
+                class_course_id=resource.class_course_id,
+                source_type=RAG_SOURCE_RESOURCE,
+                source_id=resource_id,
+                chunks=chunks,
+                embeddings=embeddings,
+                source_title=resource.title,
+                page_numbers=page_numbers,
+            )
+            resource.indexing_status = RESOURCE_INDEX_INDEXED
+            resource.indexing_error = None
+            resource.indexed_at = datetime.now(timezone.utc)
+            resource.file_size = len(file_bytes)
+            resource.checksum_sha256 = checksum
+            await self.session.commit()
+            return len(chunks)
+        except Exception as exc:
+            await self.session.rollback()
+            resource = await resources.get_by_id(resource_id, for_update=True)
+            if resource is None:
+                return 0
+            await self.delete_resource(resource_id)
+            resource.indexing_status = RESOURCE_INDEX_FAILED
+            resource.indexed_at = None
+            resource.indexing_error = self._resource_indexing_error(exc)
+            await self.session.commit()
+            # Provider exceptions may contain keys, response bodies, or paths.
+            logger.warning("Resource %s indexing failed (%s)", resource_id, type(exc).__name__)
+            return 0
+
+    async def delete_resource(self, resource_id: int) -> None:
+        """Stage chunk deletion; the resource service owns the enclosing commit."""
+        await self.repository.delete_source_chunks(RAG_SOURCE_RESOURCE, resource_id)
+
+    @staticmethod
+    def _resource_indexing_error(exc: Exception) -> str:
+        if isinstance(exc, DocumentTooLargeError):
+            return "The PDF exceeds the indexing limits. Upload a smaller document."
+        if isinstance(exc, DocumentExtractionError):
+            return "The PDF could not be read. Upload an unencrypted PDF containing extractable text."
+        if isinstance(exc, OSError):
+            return "The PDF file could not be read from storage."
+        return "Resource indexing failed. Please retry later."
 
     async def answer_class_question(
         self,

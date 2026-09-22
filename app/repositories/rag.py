@@ -3,13 +3,16 @@ from typing import NamedTuple
 from sqlalchemy import Select, and_, delete, exists, or_, select
 from sqlalchemy.orm import selectinload
 
-from app.models.classroom import MEMBERSHIP_STATUS_APPROVED, ClassMembership, Classroom
+from app.models.announcement import Announcement
+from app.models.classroom import CLASS_ROLE_REPRESENTATIVE, MEMBERSHIP_STATUS_APPROVED, ClassMembership, Classroom
 from app.models.course import ClassCourse, CourseRegistration
 from app.models.resource import (
+    RAG_SOURCE_ANNOUNCEMENT,
     RAG_SOURCE_COURSE,
     RAG_SOURCE_RESOURCE,
     RAG_SOURCE_TASK,
     RAG_SOURCE_TASK_ATTACHMENT,
+    RESOURCE_INDEX_INDEXED,
     RagChunk,
     Resource,
 )
@@ -144,6 +147,20 @@ class RagRepository(BaseRepository[RagChunk]):
                 ClassCourse.is_active.is_(True),
             )
         )
+        representative_access = exists(
+            approved_membership_ids.where(ClassMembership.role == CLASS_ROLE_REPRESENTATIVE)
+        )
+        active_class_course_ids = select(ClassCourse.id).where(
+            ClassCourse.classroom_id == classroom_id,
+            ClassCourse.is_active.is_(True),
+        )
+        valid_announcement_source = exists(
+            select(Announcement.id).where(
+                Announcement.id == RagChunk.source_id,
+                Announcement.classroom_id == RagChunk.classroom_id,
+                Announcement.class_course_id.is_not_distinct_from(RagChunk.class_course_id),
+            )
+        )
         valid_task_source = exists(
             select(Task.id).where(
                 Task.id == RagChunk.source_id,
@@ -159,6 +176,7 @@ class RagRepository(BaseRepository[RagChunk]):
                 Resource.classroom_id == RagChunk.classroom_id,
                 Resource.class_course_id.is_not_distinct_from(RagChunk.class_course_id),
                 Resource.is_enabled.is_(True),
+                Resource.indexing_status == RESOURCE_INDEX_INDEXED,
             )
         )
         valid_task_attachment_source = exists(
@@ -181,6 +199,7 @@ class RagRepository(BaseRepository[RagChunk]):
             )
         )
         valid_source = or_(
+            and_(RagChunk.source_type == RAG_SOURCE_ANNOUNCEMENT, valid_announcement_source),
             and_(RagChunk.source_type == RAG_SOURCE_TASK, valid_task_source),
             and_(
                 RagChunk.source_type == RAG_SOURCE_TASK_ATTACHMENT,
@@ -192,6 +211,7 @@ class RagRepository(BaseRepository[RagChunk]):
         allowed_course_scope = or_(
             RagChunk.class_course_id.is_(None),
             RagChunk.class_course_id.in_(registered_class_course_ids),
+            and_(representative_access, RagChunk.class_course_id.in_(active_class_course_ids)),
         )
         distance = RagChunk.embedding.cosine_distance(query_embedding).label("distance")
 
