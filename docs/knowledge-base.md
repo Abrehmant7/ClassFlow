@@ -120,6 +120,10 @@ f29de09fc869_create_refresh_tokens_table.py
 00f7fc38ba77_create_courses_and_course_registrations.py
 f2659f4668ac_create_tasks_progress_and_attachments.py
 b7428b2d4f91_make_personal_tasks_classroom_optional.py
+f168abb59f13_create_password_reset_tokens_table.py
+725bcd6fad8e_add_rag_resources_and_chunks.py
+9c4f6b2a1d8e_add_rag_chunk_source_metadata.py
+58f17981e82f_add_announcements_and_complete_course_.py
 ```
 
 Important task migration note:
@@ -426,6 +430,68 @@ Search behavior:
 - Search runs against task title, task description, classroom name, course name, and course code.
 - Search is applied after authorization constraints in the SQL query.
 
+## Module 6 - Announcements And Resources
+
+Implemented on 2026-09-22:
+
+- Announcement model, create/update/read schemas, and repository with pinned-first ordering.
+- Announcement service and HTTP routes for creation, scoped listing, direct reads, updates, pinning, and deletion.
+- Extended the existing `resources` table; no second resource table was introduced.
+- Resource schemas, repository, service, and HTTP routes for upload, authorized metadata/download, update, deletion, and indexing retry.
+- Shared class-content authorization: active classroom and approved membership; students need an active course registration for course-specific content; same-class representatives can manage all active course content.
+- PDF-only uploads stream to a temporary file, enforce the actual byte limit and PDF header, compute SHA-256, and atomically move to a generated storage key. Failed DB creation removes the upload.
+- Synchronous resource indexing uses the existing PDF extraction, text splitter, Gemini embeddings, and `RAG_SOURCE_RESOURCE` chunks, preserving title/page metadata.
+- Indexing states: `pending`, `processing`, `indexed`, `failed`. Failed indexing keeps the resource downloadable, records a safe error, and supports retry.
+- Announcement creation and updates synchronously replace announcement RAG chunks in the same database transaction. Indexing failure rolls back the announcement mutation; deletion removes the announcement and its chunks atomically.
+- RAG retrieval validates every announcement/resource source against its live database row. Approved representatives can retrieve active course-scoped RAG content without registering for each course; students still require active registration.
+- Resource and chunk deletion share one database transaction. Physical cleanup happens after commit and logs failures.
+- Course-linked resources, announcements, and RAG chunks use `ON DELETE CASCADE` to prevent course-only content becoming class-wide.
+
+Announcement API:
+
+```text
+POST   /api/v1/classes/{class_id}/announcements
+GET    /api/v1/classes/{class_id}/announcements
+GET    /api/v1/announcements/{announcement_id}
+PATCH  /api/v1/announcements/{announcement_id}
+DELETE /api/v1/announcements/{announcement_id}
+```
+
+Resource API:
+
+```text
+POST   /api/v1/classes/{class_id}/resources
+GET    /api/v1/classes/{class_id}/resources
+GET    /api/v1/resources/{resource_id}
+GET    /api/v1/resources/{resource_id}/download
+PATCH  /api/v1/resources/{resource_id}
+DELETE /api/v1/resources/{resource_id}
+POST   /api/v1/resources/{resource_id}/reindex
+```
+
+Uploads use multipart fields `title`, optional `description`, optional `class_course_id`, and `file`. Resource files are never exposed through a public static directory. Downloads always pass through authorization and return private, no-store responses.
+
+Resource storage settings:
+
+```env
+CLASSFLOW_COURSE_RESOURCE_STORAGE_DIR=storage/course_resources
+CLASSFLOW_COURSE_RESOURCE_MAX_SIZE_BYTES=10485760
+CLASSFLOW_COURSE_RESOURCE_ALLOWED_EXTENSIONS=["pdf"]
+CLASSFLOW_COURSE_RESOURCE_ALLOWED_CONTENT_TYPES=["application/pdf"]
+```
+
+Keep this directory outside public static directories. In production, use a private persistent location such as `/var/lib/classflow/course_resources`. Never serialize `storage_key` or the internal download path in API responses.
+
+Migration `58f17981e82f` renames the old `file_path`/`file_type` columns and preserves their values. Historical file sizes/checksums remain nullable until indexing fills them; new uploads always supply both. Legacy paths must be relative to the private resource directory to be served. Existing resource chunks become searchable after successful reindexing.
+
+Validation:
+
+```powershell
+.\myvenv\Scripts\python.exe -m pytest
+```
+
+`tests/test_resource_storage.py` runs without PostgreSQL. `tests/test_module6_persistence.py`, `tests/test_announcements.py`, and `tests/test_resources.py` additionally run when `CLASSFLOW_TEST_DATABASE_URL` points to a database migrated to the latest head. Their test rows are enclosed in an outer transaction and rolled back, including service commits; Gemini calls are mocked. Coverage includes the role matrix, exact-ID access, CRUD, upload validation and cleanup, private downloads, RAG visibility, indexing failure/retry, and chunk deletion.
+
 ## Frontend State
 
 Implemented frontend screens include:
@@ -516,12 +582,9 @@ https://github.com/Abrehmant7/ClassFlow/compare/main...feature/personal-feed?exp
 
 Likely next backend modules:
 
-- Announcements
-- Resources
 - Notifications
 - Dashboard aggregation
-- RAG ingestion and class-scoped retrieval
-- Chatbot endpoints
+- Further chatbot and RAG retrieval improvements
 
 RAG safety rule:
 
