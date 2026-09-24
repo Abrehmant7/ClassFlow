@@ -11,6 +11,7 @@ from app.repositories.membership import ClassMembershipRepository
 from app.schemas.course import CourseCreate, CourseRead
 from app.services.course import CourseService
 from app.services.rag import RagChatService
+from app.services.reminder import ReminderService
 
 router = APIRouter(prefix="/courses", tags=["courses"])
 
@@ -22,6 +23,7 @@ def get_course_service(session: AsyncSession) -> CourseService:
         registration_repository=CourseRegistrationRepository(session),
         membership_repository=ClassMembershipRepository(session),
         rag_service=RagChatService(session),
+        reminder_service=ReminderService(session),
     )
 
 

@@ -59,11 +59,12 @@ class FeedService:
         timezone_name: str,
         page: int,
         page_size: int,
+        now_utc: datetime | None = None,
     ) -> FeedResponse:
         """Return the authorized global task feed with MVP filters and search."""
         search = self._normalize_search(search)
         timezone = self._parse_timezone(timezone_name)
-        now_utc = datetime.now(UTC)
+        now_utc = now_utc or datetime.now(UTC)
         today_start_utc, today_end_utc, week_end_utc = self._local_due_boundaries(now_utc, timezone)
 
         await self._validate_filter_access(user_id, classroom_id, class_course_id)
@@ -111,10 +112,15 @@ class FeedService:
             total_pages=ceil(result.total / page_size) if result.total else 0,
         )
 
-    async def get_summary(self, user_id: int, timezone_name: str) -> FeedSummary:
+    async def get_summary(
+        self,
+        user_id: int,
+        timezone_name: str,
+        now_utc: datetime | None = None,
+    ) -> FeedSummary:
         """Return dashboard counts using the same authorization and completion rules as /feed."""
         timezone = self._parse_timezone(timezone_name)
-        now_utc = datetime.now(UTC)
+        now_utc = now_utc or datetime.now(UTC)
         today_start_utc, today_end_utc, upcoming_end_utc = self._local_due_boundaries(now_utc, timezone)
         week_start_utc, week_end_utc = self._local_week_boundaries(now_utc, timezone)
 

@@ -8,8 +8,16 @@ from app.database.session import get_db_session
 from app.models.user import User
 from app.schemas.announcement import AnnouncementCreate, AnnouncementRead, AnnouncementUpdate
 from app.services.announcement import AnnouncementService
+from app.services.notification import NotificationService
 
 router = APIRouter(tags=["announcements"])
+
+
+def get_announcement_service(session: AsyncSession) -> AnnouncementService:
+    return AnnouncementService(
+        session,
+        notification_service=NotificationService(session),
+    )
 
 
 @router.post("/classes/{class_id}/announcements", response_model=AnnouncementRead, status_code=status.HTTP_201_CREATED)
@@ -19,7 +27,7 @@ async def create_announcement(
     current_user: Annotated[User, Depends(get_current_user)],
     session: Annotated[AsyncSession, Depends(get_db_session)],
 ) -> AnnouncementRead:
-    return await AnnouncementService(session).create_announcement(class_id, announcement_in, current_user.id)
+    return await get_announcement_service(session).create_announcement(class_id, announcement_in, current_user.id)
 
 
 @router.get("/classes/{class_id}/announcements", response_model=list[AnnouncementRead])
@@ -28,7 +36,7 @@ async def list_announcements(
     current_user: Annotated[User, Depends(get_current_user)],
     session: Annotated[AsyncSession, Depends(get_db_session)],
 ) -> list[AnnouncementRead]:
-    return await AnnouncementService(session).list_announcements(class_id, current_user.id)
+    return await get_announcement_service(session).list_announcements(class_id, current_user.id)
 
 
 @router.get("/announcements/{announcement_id}", response_model=AnnouncementRead)
@@ -37,7 +45,7 @@ async def read_announcement(
     current_user: Annotated[User, Depends(get_current_user)],
     session: Annotated[AsyncSession, Depends(get_db_session)],
 ) -> AnnouncementRead:
-    return await AnnouncementService(session).get_announcement(announcement_id, current_user.id)
+    return await get_announcement_service(session).get_announcement(announcement_id, current_user.id)
 
 
 @router.patch("/announcements/{announcement_id}", response_model=AnnouncementRead)
@@ -47,7 +55,7 @@ async def update_announcement(
     current_user: Annotated[User, Depends(get_current_user)],
     session: Annotated[AsyncSession, Depends(get_db_session)],
 ) -> AnnouncementRead:
-    return await AnnouncementService(session).update_announcement(announcement_id, announcement_in, current_user.id)
+    return await get_announcement_service(session).update_announcement(announcement_id, announcement_in, current_user.id)
 
 
 @router.delete("/announcements/{announcement_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -56,6 +64,6 @@ async def delete_announcement(
     current_user: Annotated[User, Depends(get_current_user)],
     session: Annotated[AsyncSession, Depends(get_db_session)],
 ) -> Response:
-    await AnnouncementService(session).delete_announcement(announcement_id, current_user.id)
+    await get_announcement_service(session).delete_announcement(announcement_id, current_user.id)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 

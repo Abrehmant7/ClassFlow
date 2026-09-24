@@ -11,14 +11,22 @@ from app.repositories.classroom import ClassroomRepository
 from app.repositories.membership import ClassMembershipRepository
 from app.schemas.classroom import ClassroomCreate, ClassroomMineRead, ClassroomRead, ClassroomUpdate, ClassJoinRequest, ClassMembershipRead
 from app.services.classroom import ClassroomService
+from app.services.notification import NotificationService
+from app.services.reminder import ReminderService
 
 router = APIRouter(prefix="/classes", tags=["classes"])
 
 
 def get_classroom_service(session: AsyncSession) -> ClassroomService:
+    notification_service = NotificationService(session)
     return ClassroomService(
         classroom_repository=ClassroomRepository(session),
         membership_repository=ClassMembershipRepository(session),
+        notification_service=notification_service,
+        reminder_service=ReminderService(
+            session,
+            notification_service=notification_service,
+        ),
     )
 
 

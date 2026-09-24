@@ -37,6 +37,17 @@ from app.schemas.task import (
     TaskUpdate,
 )
 from app.services.rag import RagChatService
+from app.services.notification import NotificationService
+from app.services.reminder import ReminderService
+
+TASK_NOTIFICATION_FIELDS = {
+    "title",
+    "description",
+    "deadline",
+    "priority",
+    "task_type",
+    "status",
+}
 
 
 class TaskService:
@@ -49,6 +60,8 @@ class TaskService:
         class_course_repository: ClassCourseRepository,
         registration_repository: CourseRegistrationRepository,
         rag_service: RagChatService | None = None,
+        notification_service: NotificationService | None = None,
+        reminder_service: ReminderService | None = None,
     ) -> None:
         self.task_repository = task_repository
         self.progress_repository = progress_repository
@@ -57,6 +70,8 @@ class TaskService:
         self.class_course_repository = class_course_repository
         self.registration_repository = registration_repository
         self.rag_service = rag_service
+        self.notification_service = notification_service
+        self.reminder_service = reminder_service
         self.session = task_repository.session
 
     async def create_class_task(self, classroom_id: int, task_in: TaskCreate, user_id: int) -> TaskRead:
@@ -84,6 +99,8 @@ class TaskService:
             task.status = TASK_STATUS_COMPLETED
             task.completed_at = datetime.now(timezone.utc)
             await self.session.flush()
+            if self.reminder_service is not None:
+                await self.reminder_service.cancel_task_reminders(task.id)
             await self.session.commit()
 
         task = await self._get_task_or_404(task.id)
@@ -100,6 +117,8 @@ class TaskService:
             task.status = TASK_STATUS_ACTIVE
             task.completed_at = None
             await self.session.flush()
+            if self.reminder_service is not None:
+                await self.reminder_service.sync_task_reminders(task)
             await self.session.commit()
 
         task = await self._get_task_or_404(task.id)
@@ -118,15 +137,22 @@ class TaskService:
         else:
             raise ClassFlowError("Invalid task visibility", "INVALID_TASK_VISIBILITY", status.HTTP_422_UNPROCESSABLE_CONTENT)
 
-        task = await self.task_repository.create(
-            classroom_id=classroom_id,
-            task_in=task_in,
-            created_by_user_id=user_id,
-        )
-        if self.rag_service is not None and task.visibility == TASK_VISIBILITY_SHARED:
-            await self.rag_service.index_task(task)
-        else:
+        try:
+            task = await self.task_repository.create(
+                classroom_id=classroom_id,
+                task_in=task_in,
+                created_by_user_id=user_id,
+            )
+            if self.rag_service is not None and task.visibility == TASK_VISIBILITY_SHARED:
+                await self.rag_service.index_task(task, commit=False)
+            if self.notification_service is not None and task.visibility == TASK_VISIBILITY_SHARED:
+                await self.notification_service.notify_task_created(task, user_id)
+            if self.reminder_service is not None:
+                await self.reminder_service.sync_task_reminders(task)
             await self.session.commit()
+        except Exception:
+            await self.session.rollback()
+            raise
 
         task = await self._get_task_or_404(task.id)
         return await self._build_task_read(task, membership, user_id, include_attachments=True)
@@ -194,11 +220,22 @@ class TaskService:
             self._validate_personal_task_update(update_data)
             self._apply_personal_completion_timestamp(task, update_data.get("status"))
 
-        task = await self.task_repository.update(task, task_in)
-        if self.rag_service is not None and task.visibility == TASK_VISIBILITY_SHARED:
-            await self.rag_service.index_task(task)
-        else:
+        try:
+            task = await self.task_repository.update(task, task_in)
+            if self.rag_service is not None and task.visibility == TASK_VISIBILITY_SHARED:
+                await self.rag_service.index_task(task, commit=False)
+            if (
+                self.notification_service is not None
+                and task.visibility == TASK_VISIBILITY_SHARED
+                and TASK_NOTIFICATION_FIELDS.intersection(update_data)
+            ):
+                await self.notification_service.notify_task_updated(task, user_id)
+            if self.reminder_service is not None:
+                await self.reminder_service.sync_task_reminders(task)
             await self.session.commit()
+        except Exception:
+            await self.session.rollback()
+            raise
 
         task = await self._get_task_or_404(task.id)
         return await self._build_task_read(task, membership, user_id, include_attachments=True)
@@ -243,6 +280,11 @@ class TaskService:
             progress_status=progress_in.status,
             completed_at=completed_at,
         )
+        if self.reminder_service is not None:
+            if progress_in.status == TASK_PROGRESS_COMPLETED:
+                await self.reminder_service.cancel_user_task_reminder(task.id, user_id)
+            else:
+                await self.reminder_service.restore_user_task_reminder(task.id, user_id)
         await self.session.commit()
 
         task = await self._get_task_or_404(task.id)

@@ -3,7 +3,6 @@ from datetime import datetime
 from sqlalchemy import and_, or_, select
 from sqlalchemy.orm import selectinload
 
-from app.models.classroom import MEMBERSHIP_STATUS_APPROVED, ClassMembership
 from app.models.course import ClassCourse, CourseRegistration
 from app.models.task import (
     TASK_STATUS_ACTIVE,
@@ -14,6 +13,7 @@ from app.models.task import (
     TaskProgress,
 )
 from app.repositories.base import BaseRepository
+from app.repositories.audience import task_access_condition
 from app.schemas.task import TaskCreate, TaskUpdate
 
 
@@ -120,33 +120,6 @@ class TaskRepository(BaseRepository[Task]):
         return list(result.scalars().all())
 
     async def list_feed_for_user(self, user_id: int, include_closed: bool = False) -> list[Task]:
-        approved_membership_ids = (
-            select(ClassMembership.id)
-            .where(
-                ClassMembership.user_id == user_id,
-                ClassMembership.status == MEMBERSHIP_STATUS_APPROVED,
-            )
-        )
-        approved_classroom_ids = (
-            select(ClassMembership.classroom_id)
-            .where(
-                ClassMembership.user_id == user_id,
-                ClassMembership.status == MEMBERSHIP_STATUS_APPROVED,
-            )
-        )
-        registered_course_ids = (
-            select(CourseRegistration.class_course_id)
-            .join(ClassCourse, ClassCourse.id == CourseRegistration.class_course_id)
-            .where(
-                CourseRegistration.membership_id.in_(approved_membership_ids),
-                CourseRegistration.is_active.is_(True),
-                ClassCourse.is_active.is_(True),
-            )
-        )
-        active_course_task = self._active_class_course_task_condition()
-
-        # Match /feed semantics: course-linked tasks require active registration,
-        # even for representatives, and disappear when the class-course is dropped.
         statement = (
             select(Task)
             .options(
@@ -154,26 +127,7 @@ class TaskRepository(BaseRepository[Task]):
                 selectinload(Task.attachments),
                 selectinload(Task.class_course).selectinload(ClassCourse.course),
             )
-            .where(
-                or_(
-                    and_(
-                        Task.visibility == TASK_VISIBILITY_PERSONAL,
-                        Task.created_by_user_id == user_id,
-                        active_course_task,
-                    ),
-                    and_(
-                        Task.visibility == TASK_VISIBILITY_SHARED,
-                        Task.classroom_id.in_(approved_classroom_ids),
-                        Task.class_course_id.is_(None),
-                    ),
-                    and_(
-                        Task.visibility == TASK_VISIBILITY_SHARED,
-                        Task.classroom_id.in_(approved_classroom_ids),
-                        Task.class_course_id.in_(registered_course_ids),
-                        active_course_task,
-                    ),
-                )
-            )
+            .where(task_access_condition(user_id))
         )
 
         if not include_closed:

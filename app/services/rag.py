@@ -490,6 +490,8 @@ class RagChatService:
         source_id: int,
         text: str,
         title: str | None = None,
+        *,
+        commit: bool = True,
     ) -> int:
         if source_type not in ALLOWED_SOURCE_TYPES:
             raise ValueError("Unsupported RAG source type")
@@ -501,7 +503,8 @@ class RagChatService:
         )
         if not chunks:
             await self.repository.delete_source_chunks(source_type, source_id)
-            await self.session.commit()
+            if commit:
+                await self.session.commit()
             return 0
 
         return await self._index_chunks(
@@ -512,6 +515,7 @@ class RagChatService:
             chunks=chunks,
             source_title=title,
             page_numbers=[None] * len(chunks),
+            commit=commit,
         )
 
     async def _index_chunks(
@@ -523,6 +527,8 @@ class RagChatService:
         chunks: list[str],
         source_title: str | None,
         page_numbers: list[int | None],
+        *,
+        commit: bool = True,
     ) -> int:
         embeddings = await self.ai_client.embed_documents(chunks, title=source_title)
         await self.repository.replace_source_chunks(
@@ -535,7 +541,8 @@ class RagChatService:
             source_title=source_title,
             page_numbers=page_numbers,
         )
-        await self.session.commit()
+        if commit:
+            await self.session.commit()
         return len(chunks)
 
     async def index_task_attachment(
@@ -600,10 +607,11 @@ class RagChatService:
         )
         await self.session.commit()
 
-    async def index_task(self, task: Task) -> int:
+    async def index_task(self, task: Task, *, commit: bool = True) -> int:
         if task.visibility != TASK_VISIBILITY_SHARED or task.status != TASK_STATUS_ACTIVE:
             await self.repository.delete_source_chunks(RAG_SOURCE_TASK, task.id)
-            await self.session.commit()
+            if commit:
+                await self.session.commit()
             return 0
 
         deadline = task.deadline.isoformat() if task.deadline is not None else "No deadline"
@@ -625,6 +633,7 @@ class RagChatService:
             source_id=task.id,
             text=text,
             title=task.title,
+            commit=commit,
         )
 
     async def index_class_course(

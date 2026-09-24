@@ -28,6 +28,8 @@ from app.schemas.classroom import (
 
 from app.repositories.course import ClassCourseRepository, CourseRegistrationRepository
 from app.services.course import CourseRegistrationService
+from app.services.notification import NotificationService
+from app.services.reminder import ReminderService
 
 
 class ClassroomService:
@@ -35,9 +37,13 @@ class ClassroomService:
         self,
         classroom_repository: ClassroomRepository,
         membership_repository: ClassMembershipRepository,
+        notification_service: NotificationService | None = None,
+        reminder_service: ReminderService | None = None,
     ) -> None:
         self.classroom_repository = classroom_repository
         self.membership_repository = membership_repository
+        self.notification_service = notification_service
+        self.reminder_service = reminder_service
         self.session = classroom_repository.session
 
     async def create_classroom(self, classroom_in: ClassroomCreate, creator_id: int) -> Classroom:
@@ -140,22 +146,29 @@ class ClassroomService:
         existing = await self.membership_repository.get_by_user_and_class(user_id, class_id)
         now = datetime.now(timezone.utc)
 
-        if existing is not None:
-            if existing.status == MEMBERSHIP_STATUS_APPROVED:
-                raise ClassFlowError("User is already an approved member", "ALREADY_APPROVED_MEMBER", status.HTTP_409_CONFLICT)
-            if existing.status == MEMBERSHIP_STATUS_PENDING:
-                raise ClassFlowError("Membership request is already pending", "MEMBERSHIP_REQUEST_ALREADY_PENDING", status.HTTP_409_CONFLICT)
+        try:
+            if existing is not None:
+                if existing.status == MEMBERSHIP_STATUS_APPROVED:
+                    raise ClassFlowError("User is already an approved member", "ALREADY_APPROVED_MEMBER", status.HTTP_409_CONFLICT)
+                if existing.status == MEMBERSHIP_STATUS_PENDING:
+                    raise ClassFlowError("Membership request is already pending", "MEMBERSHIP_REQUEST_ALREADY_PENDING", status.HTTP_409_CONFLICT)
 
-            membership = await self.membership_repository.reset_as_pending_request(existing, now)
-        else:
-            membership = await self.membership_repository.create(
-                user_id=user_id,
-                classroom_id=class_id,
-                role=CLASS_ROLE_STUDENT,
-                status=MEMBERSHIP_STATUS_PENDING,
-            )
+                membership = await self.membership_repository.reset_as_pending_request(existing, now)
+            else:
+                membership = await self.membership_repository.create(
+                    user_id=user_id,
+                    classroom_id=class_id,
+                    role=CLASS_ROLE_STUDENT,
+                    status=MEMBERSHIP_STATUS_PENDING,
+                )
+                membership = await self.membership_repository.get_by_id(membership.id)
 
-        await self.session.commit()
+            if self.notification_service is not None:
+                await self.notification_service.notify_membership_request(membership, classroom)
+            await self.session.commit()
+        except Exception:
+            await self.session.rollback()
+            raise
         await self.session.refresh(membership)
         return ClassMembershipRead.model_validate(membership)
 
@@ -179,21 +192,37 @@ class ClassroomService:
         if membership.status != MEMBERSHIP_STATUS_PENDING:
             raise ClassFlowError("Only pending requests can be approved", "MEMBERSHIP_NOT_PENDING", status.HTTP_409_CONFLICT)
 
-        membership = await self.membership_repository.update_status(
-            membership,
-            MEMBERSHIP_STATUS_APPROVED,
-            datetime.now(timezone.utc),
-        )
+        try:
+            membership = await self.membership_repository.update_status(
+                membership,
+                MEMBERSHIP_STATUS_APPROVED,
+                datetime.now(timezone.utc),
+            )
 
-        # Keep membership approval and default-course registration in one transaction.
-        registration_service = CourseRegistrationService(
-            membership_repository=self.membership_repository,
-            class_course_repository=ClassCourseRepository(self.session),
-            registration_repository=CourseRegistrationRepository(self.session),
-        )
-
-        await registration_service.register_default_courses(membership)
-        await self.session.commit()
+            # Keep approval, default registrations, notification, and reminders atomic.
+            registration_service = CourseRegistrationService(
+                membership_repository=self.membership_repository,
+                class_course_repository=ClassCourseRepository(self.session),
+                registration_repository=CourseRegistrationRepository(self.session),
+            )
+            await registration_service.register_default_courses(membership)
+            classroom = await self.classroom_repository.get_by_id(membership.classroom_id)
+            if self.notification_service is not None:
+                await self.notification_service.notify_membership_result(
+                    membership,
+                    classroom,
+                    representative_user_id,
+                    approved=True,
+                )
+            if self.reminder_service is not None:
+                await self.reminder_service.sync_user_class_reminders(
+                    membership.classroom_id,
+                    membership.user_id,
+                )
+            await self.session.commit()
+        except Exception:
+            await self.session.rollback()
+            raise
         await self.session.refresh(membership)
         return ClassMembershipRead.model_validate(membership)
 
@@ -206,12 +235,24 @@ class ClassroomService:
         if membership.status != MEMBERSHIP_STATUS_PENDING:
             raise ClassFlowError("Only pending requests can be rejected", "MEMBERSHIP_NOT_PENDING", status.HTTP_409_CONFLICT)
 
-        membership = await self.membership_repository.update_status(
-            membership,
-            MEMBERSHIP_STATUS_REJECTED,
-            datetime.now(timezone.utc),
-        )
-        await self.session.commit()
+        try:
+            membership = await self.membership_repository.update_status(
+                membership,
+                MEMBERSHIP_STATUS_REJECTED,
+                datetime.now(timezone.utc),
+            )
+            if self.notification_service is not None:
+                classroom = await self.classroom_repository.get_by_id(membership.classroom_id)
+                await self.notification_service.notify_membership_result(
+                    membership,
+                    classroom,
+                    representative_user_id,
+                    approved=False,
+                )
+            await self.session.commit()
+        except Exception:
+            await self.session.rollback()
+            raise
         await self.session.refresh(membership)
         return ClassMembershipRead.model_validate(membership)
 
@@ -225,12 +266,21 @@ class ClassroomService:
         if classroom is not None and membership.user_id == classroom.creator_id:
             raise ClassFlowError("Class creator cannot be removed", "CANNOT_REMOVE_CLASS_CREATOR", status.HTTP_409_CONFLICT)
 
-        await self.membership_repository.update_status(
-            membership,
-            MEMBERSHIP_STATUS_REMOVED,
-            datetime.now(timezone.utc),
-        )
-        await self.session.commit()
+        try:
+            await self.membership_repository.update_status(
+                membership,
+                MEMBERSHIP_STATUS_REMOVED,
+                datetime.now(timezone.utc),
+            )
+            if self.reminder_service is not None:
+                await self.reminder_service.cancel_user_class_reminders(
+                    membership.classroom_id,
+                    membership.user_id,
+                )
+            await self.session.commit()
+        except Exception:
+            await self.session.rollback()
+            raise
 
 
     async def _get_membership_or_404(self, membership_id: int):

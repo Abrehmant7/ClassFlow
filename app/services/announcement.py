@@ -8,6 +8,7 @@ from app.repositories.announcement import AnnouncementRepository
 from app.schemas.announcement import AnnouncementCreate, AnnouncementRead, AnnouncementUpdate
 from app.services.content_access import ClassContentAccess
 from app.services.rag import RagChatService
+from app.services.notification import NotificationService
 
 
 class AnnouncementService:
@@ -17,11 +18,13 @@ class AnnouncementService:
         repository: AnnouncementRepository | None = None,
         access: ClassContentAccess | None = None,
         rag_service: RagChatService | None = None,
+        notification_service: NotificationService | None = None,
     ) -> None:
         self.session = session
         self.repository = repository or AnnouncementRepository(session)
         self.access = access or ClassContentAccess(session)
         self.rag_service = rag_service or RagChatService(session)
+        self.notification_service = notification_service
 
     async def create_announcement(self, classroom_id: int, announcement_in: AnnouncementCreate, user_id: int) -> AnnouncementRead:
         membership = await self.access.require_representative(classroom_id, user_id)
@@ -29,6 +32,8 @@ class AnnouncementService:
         try:
             announcement = await self.repository.create(classroom_id, user_id, announcement_in)
             await self.rag_service.index_announcement(announcement)
+            if self.notification_service is not None:
+                await self.notification_service.notify_announcement_posted(announcement, user_id)
             await self.session.commit()
         except Exception:
             await self.session.rollback()

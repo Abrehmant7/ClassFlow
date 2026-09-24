@@ -410,7 +410,7 @@ Feed visibility rules:
 - Personal tasks are visible only to their creator.
 - Shared class-wide tasks are visible to approved members of the classroom.
 - Shared course-specific tasks are visible only to actively registered students for that class course.
-- Representatives do not automatically see every course-specific shared task in the feed unless they are registered in the course.
+- Approved representatives can see course-specific shared tasks for every active course in their classroom without registering in each course.
 - Course-specific tasks are returned only while the linked class course is active.
 
 Feed response behavior:
@@ -491,6 +491,34 @@ Validation:
 ```
 
 `tests/test_resource_storage.py` runs without PostgreSQL. `tests/test_module6_persistence.py`, `tests/test_announcements.py`, and `tests/test_resources.py` additionally run when `CLASSFLOW_TEST_DATABASE_URL` points to a database migrated to the latest head. Their test rows are enclosed in an outer transaction and rolled back, including service commits; Gemini calls are mocked. Coverage includes the role matrix, exact-ID access, CRUD, upload validation and cleanup, private downloads, RAG visibility, indexing failure/retry, and chunk deletion.
+
+## Module 7 - Notifications, Reminders, Search, And Dashboard: Backend Complete
+
+Implemented on 2026-09-24:
+
+- Added `Notification` with recipient, optional actor/classroom, event metadata, action URL, read state, optional dedupe key, the event-type check constraint, and recipient/read/date indexes.
+- Added `Reminder` with task/recipient scope, scheduled and snapshot deadlines, pending/sent/cancelled state, uniqueness per task/recipient/time, and the worker lookup index.
+- Added reminder lead-time, batch-size, and dashboard preview-limit settings.
+- Migration `820286bd906a` creates only `notifications` and `reminders`; recipient deletion cascades both records, task deletion cascades reminders, and deleting an actor preserves notifications by setting the actor to null.
+- Added `AudienceRepository` for class, course, representative, and task recipients. It supports actor exclusion and filtering to authorized incomplete students for shared-task reminders.
+- Centralized task visibility in `task_access_condition()`. Personal tasks remain owner-only; class-wide shared tasks require an approved membership in an active classroom; course tasks allow approved representatives or actively registered students while the class course is active.
+- Feed queries, feed summaries, legacy task-feed queries, course filter validation, and course filter options now use the representative-aware access rule.
+- Added recipient-scoped notification persistence and read-state operations. Internal event creation flushes without committing, and notification responses never expose dedupe keys.
+- Added `NotificationService` events for membership requests/results, shared task creation/meaningful updates, announcement posting, and approaching deadlines. Actors are excluded from their own event audience.
+- Membership, task, and announcement services stage their notifications in the original action transaction. Shared task RAG indexing now supports a non-committing path so task, chunks, notifications, and reminders commit together.
+- Added reminder synchronization for future active tasks. Personal reminders belong to the owner; shared reminders belong to authorized incomplete students. Deadlines inside the lead window schedule immediately, while overdue/no-deadline/closed tasks create no pending reminder.
+- Deadline changes reschedule reminders; task closure and completion cancel them; reopening or pending progress restores eligible reminders.
+- Membership approval/removal and course registration/drop synchronize the affected user's reminders in the same transaction.
+- Added the `FOR UPDATE SKIP LOCKED` deadline worker in `app.jobs.process_reminders`. It revalidates task state, deadline snapshot, authorization, and progress before creating a deduplicated notification and marking the reminder sent.
+- Added authenticated notification endpoints for paginated/filterable listing, unread counts, recipient-scoped read/unread changes, and marking all of the current user's notifications read.
+- Added authorized PostgreSQL keyword search over task titles/descriptions, announcement titles/bodies, and enabled resource titles/descriptions. Search supports entity, class, course, date, task type, priority, status, and pagination filters.
+- Search validates requested class and course scopes before querying. Unauthorized scopes return `403`, while every result query applies the same class/course/task access conditions used by the feed and notification audiences.
+- Migration `3e54c897a21b` enables `pg_trgm` and adds GIN trigram indexes to the six searchable text columns.
+- Added a live-query dashboard with feed-backed due-today/upcoming/overdue summaries and previews, authorized recent announcements, user-scoped notification data, and representative-scoped pending membership requests. Preview lists use `CLASSFLOW_DASHBOARD_LIST_LIMIT`.
+- Dashboard and feed accept IANA timezone names. Their shared boundary logic ensures task counts and preview lists use the same local-day and completion rules.
+- Added PostgreSQL integration coverage in `tests/test_search.py`, `tests/test_dashboard.py`, and `tests/test_module_7_integration.py`, plus notification API coverage. The checkpoint test verifies one course task has the same visibility across feed, notifications, dashboard, and search.
+
+Frontend work, manual testing, and deployment are intentionally outside this backend checkpoint.
 
 ## Frontend State
 
