@@ -3,9 +3,13 @@ import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
 
 import { useAuth } from "../auth/useAuth.js";
 import { getDisplayName } from "../utils/user.js";
+import { NotificationProvider } from "../notifications/NotificationProvider.jsx";
+import NotificationBell from "../components/NotificationBell.jsx";
 
 const navItems = [
   { label: "Dashboard", to: "/dashboard" },
+  { label: "Search", to: "/search" },
+  { label: "Notifications", to: "/notifications" },
   { label: "My Classes", to: "/classes" },
   { label: "Course Catalogue", to: "/courses" },
   { label: "Profile", to: "/profile" },
@@ -21,6 +25,8 @@ function navClass({ isActive }) {
 }
 
 function currentTitle(pathname) {
+  if (pathname.startsWith("/notifications")) return "Notifications";
+  if (pathname.startsWith("/search")) return "Search";
   if (pathname.startsWith("/classes")) return "Classes";
   if (pathname.startsWith("/courses")) return "Catalogue";
   if (pathname.startsWith("/profile")) return "Profile";
@@ -105,6 +111,7 @@ function AppLayout() {
   }
 
   return (
+    <NotificationProvider key={user?.id}>
     <div className="min-h-screen bg-slate-50 lg:grid lg:grid-cols-[272px_1fr]">
       <aside className="sticky top-0 hidden h-screen border-r border-slate-200 bg-white px-4 py-5 lg:flex lg:flex-col">
         <Link className="flex items-center gap-3 rounded-lg px-2 cf-focus" to="/dashboard">
@@ -132,7 +139,7 @@ function AppLayout() {
       </aside>
 
       <div className="lg:min-w-0">
-        <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/95 backdrop-blur lg:hidden">
+        <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/95 backdrop-blur">
           <div className="flex items-center justify-between px-4 py-3">
             <Link className="flex items-center gap-2 cf-focus" to="/dashboard">
               <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-600 text-sm font-bold text-white">
@@ -140,15 +147,18 @@ function AppLayout() {
               </span>
               <span className="text-sm font-semibold text-slate-900">{title}</span>
             </Link>
+            <div className="flex items-center gap-2">
+              <NotificationBell />
             <button
               aria-expanded={drawerOpen}
               aria-label="Open navigation menu"
-              className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 cf-focus"
+              className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 cf-focus lg:hidden"
               onClick={() => setDrawerOpen(true)}
               type="button"
             >
               Menu
             </button>
+            </div>
           </div>
         </header>
 
@@ -198,6 +208,7 @@ function AppLayout() {
         </main>
       </div>
     </div>
+    </NotificationProvider>
   );
 }
 

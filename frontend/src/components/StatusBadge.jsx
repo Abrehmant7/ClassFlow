@@ -4,6 +4,10 @@ const variants = {
   active: "bg-emerald-50 text-emerald-700 ring-emerald-200",
   registered: "bg-emerald-50 text-emerald-700 ring-emerald-200",
   pending: "bg-amber-50 text-amber-700 ring-amber-200",
+  processing: "bg-blue-50 text-blue-700 ring-blue-200",
+  indexed: "bg-emerald-50 text-emerald-700 ring-emerald-200",
+  failed: "bg-red-50 text-red-700 ring-red-200",
+  pinned: "bg-blue-50 text-blue-700 ring-blue-200",
   urgent: "bg-amber-50 text-amber-700 ring-amber-200",
   high: "bg-amber-50 text-amber-700 ring-amber-200",
   overdue: "bg-red-50 text-red-700 ring-red-200",
@@ -22,9 +26,9 @@ const variants = {
   optional: "bg-slate-100 text-slate-600 ring-slate-200",
 };
 
-function StatusBadge({ value, subtle = false }) {
+function StatusBadge({ value, label: customLabel, subtle = false }) {
   const key = String(value || "unknown");
-  const label = key.replaceAll("_", " ");
+  const label = customLabel || key.replaceAll("_", " ");
   const subtleClass = subtle
     ? "bg-transparent text-slate-500 ring-slate-200"
     : variants[key] || "bg-slate-100 text-slate-600 ring-slate-200";

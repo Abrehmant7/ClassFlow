@@ -8,16 +8,20 @@ import LoginPage from "./pages/LoginPage.jsx";
 import RegisterPage from "./pages/RegisterPage.jsx";
 import ClassDetailsPage from "./pages/ClassDetailsPage.jsx";
 import ClassChatPage from "./pages/ClassChatPage.jsx";
+import ClassAnnouncementsPage from "./pages/ClassAnnouncementsPage.jsx";
+import ClassResourcesPage from "./pages/ClassResourcesPage.jsx";
 import ClassCoursesPage from "./pages/ClassCoursesPage.jsx";
 import CourseCataloguePage from "./pages/CourseCataloguePage.jsx";
 import CreateClassPage from "./pages/CreateClassPage.jsx";
 import JoinClassPage from "./pages/JoinClassPage.jsx";
-import ClassOverviewPage from "./pages/ClassOverviewPage.jsx";
+import ClassEntryPage from "./pages/ClassEntryPage.jsx";
 import ClassTasksPage from "./pages/ClassTasksPage.jsx";
 import MyCoursesPage from "./pages/MyCoursesPage.jsx";
 import MyClassesPage from "./pages/MyClassesPage.jsx";
 import ProfilePage from "./pages/ProfilePage.jsx";
 import TaskDetailsPage from "./pages/TaskDetailsPage.jsx";
+import NotificationsPage from "./pages/NotificationsPage.jsx";
+import SearchPage from "./pages/SearchPage.jsx";
 
 function App() {
   return (
@@ -30,13 +34,17 @@ function App() {
         </Route>
         <Route element={<ProtectedRoute />}>
           <Route path="/dashboard" element={<DashboardPage />} />
+          <Route path="/notifications" element={<NotificationsPage />} />
+          <Route path="/search" element={<SearchPage />} />
           <Route path="/feed" element={<Navigate to="/dashboard" replace />} />
           <Route path="/profile" element={<ProfilePage />} />
           <Route path="/classes" element={<MyClassesPage />} />
           <Route path="/classes/new" element={<CreateClassPage />} />
           <Route path="/classes/join" element={<JoinClassPage />} />
-          <Route path="/classes/:classId" element={<ClassOverviewPage />} />
+          <Route path="/classes/:classId" element={<ClassEntryPage />} />
           <Route path="/classes/:classId/chat" element={<ClassChatPage />} />
+          <Route path="/classes/:classId/announcements" element={<ClassAnnouncementsPage />} />
+          <Route path="/classes/:classId/resources" element={<ClassResourcesPage />} />
           <Route path="/classes/:classId/courses" element={<ClassCoursesPage />} />
           <Route path="/classes/:classId/my-courses" element={<MyCoursesPage />} />
           <Route path="/classes/:classId/tasks" element={<ClassTasksPage />} />
