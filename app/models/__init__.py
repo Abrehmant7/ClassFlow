@@ -3,7 +3,9 @@
 from app.models.announcement import Announcement
 from app.models.classroom import Classroom, ClassMembership
 from app.models.course import Course, ClassCourse, CourseRegistration
+from app.models.notification import Notification
 from app.models.refresh_token import RefreshToken
+from app.models.reminder import Reminder
 from app.models.task import Task, TaskAttachment, TaskProgress
 from app.models.user import User
 from app.models.password_reset_token import PasswordResetToken
@@ -16,7 +18,9 @@ __all__ = [
     "ClassCourse",
     "Course",
     "CourseRegistration",
+    "Notification",
     "RefreshToken",
+    "Reminder",
     "Task",
     "TaskAttachment",
     "TaskProgress",

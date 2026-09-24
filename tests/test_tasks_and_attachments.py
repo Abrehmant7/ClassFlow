@@ -204,7 +204,7 @@ class FakeRagService:
     def __init__(self) -> None:
         self.indexed_tasks: list[tuple[int, str, str]] = []
 
-    async def index_task(self, task: Task) -> int:
+    async def index_task(self, task: Task, *, commit: bool = True) -> int:
         self.indexed_tasks.append((task.id, task.title, task.status))
         return 1
 
@@ -436,7 +436,7 @@ async def test_legacy_tasks_feed_query_matches_feed_course_authorization() -> No
         )
     )
     assert "class_courses.is_active IS true" in compiled
-    assert "class_memberships.role = 'representative'" not in compiled
+    assert "role = 'representative'" in compiled
 
 
 @pytest.mark.anyio

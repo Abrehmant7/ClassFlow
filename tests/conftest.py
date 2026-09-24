@@ -121,7 +121,7 @@ async def api(env, monkeypatch):
     monkeypatch.setattr("app.api.routes.resources.ResourceService", lambda session: env.service)
     monkeypatch.setattr(
         "app.api.routes.announcements.AnnouncementService",
-        lambda session: AnnouncementService(session, rag_service=env.rag),
+        lambda session, **kwargs: AnnouncementService(session, rag_service=env.rag),
     )
     async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as client:
         yield client

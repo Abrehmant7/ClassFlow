@@ -5,7 +5,7 @@ from sqlalchemy import Select, and_, case, func, or_, select
 from sqlalchemy.orm import selectinload
 
 from app.models.classroom import MEMBERSHIP_STATUS_APPROVED, ClassMembership, Classroom
-from app.models.course import ClassCourse, Course, CourseRegistration
+from app.models.course import ClassCourse, Course
 from app.models.task import (
     TASK_PROGRESS_COMPLETED,
     TASK_STATUS_ACTIVE,
@@ -17,6 +17,11 @@ from app.models.task import (
     TaskProgress,
 )
 from app.repositories.base import BaseRepository
+from app.repositories.audience import (
+    active_course_access_condition,
+    approved_class_access_condition,
+    task_access_condition,
+)
 from app.schemas.feed import FeedDueFilter, FeedView, FeedVisibility
 
 
@@ -174,14 +179,14 @@ class FeedRepository(BaseRepository[Task]):
         )
         course_result = await self.session.execute(
             select(ClassCourse.id, ClassCourse.classroom_id, Course.name, Course.code)
-            .join(CourseRegistration, CourseRegistration.class_course_id == ClassCourse.id)
-            .join(ClassMembership, ClassMembership.id == CourseRegistration.membership_id)
             .join(Course, Course.id == ClassCourse.course_id)
             .where(
-                ClassMembership.user_id == user_id,
-                ClassMembership.status == MEMBERSHIP_STATUS_APPROVED,
-                CourseRegistration.is_active.is_(True),
                 ClassCourse.is_active.is_(True),
+                active_course_access_condition(
+                    user_id,
+                    ClassCourse.classroom_id,
+                    ClassCourse.id,
+                ),
             )
             .order_by(Course.name.asc(), ClassCourse.id.asc())
         )
@@ -204,11 +209,11 @@ class FeedRepository(BaseRepository[Task]):
 
     async def user_can_filter_classroom(self, user_id: int, classroom_id: int) -> bool:
         result = await self.session.execute(
-            select(ClassMembership.id)
+            select(Classroom.id)
             .where(
-                ClassMembership.user_id == user_id,
-                ClassMembership.classroom_id == classroom_id,
-                ClassMembership.status == MEMBERSHIP_STATUS_APPROVED,
+                Classroom.id == classroom_id,
+                Classroom.is_active.is_(True),
+                approved_class_access_condition(user_id, Classroom.id),
             )
             .limit(1)
         )
@@ -216,64 +221,22 @@ class FeedRepository(BaseRepository[Task]):
 
     async def user_can_filter_class_course(self, user_id: int, class_course_id: int) -> bool:
         result = await self.session.execute(
-            select(CourseRegistration.id)
-            .join(ClassMembership, ClassMembership.id == CourseRegistration.membership_id)
-            .join(ClassCourse, ClassCourse.id == CourseRegistration.class_course_id)
+            select(ClassCourse.id)
             .where(
-                ClassMembership.user_id == user_id,
-                ClassMembership.status == MEMBERSHIP_STATUS_APPROVED,
-                CourseRegistration.class_course_id == class_course_id,
-                CourseRegistration.is_active.is_(True),
+                ClassCourse.id == class_course_id,
                 ClassCourse.is_active.is_(True),
+                active_course_access_condition(
+                    user_id,
+                    ClassCourse.classroom_id,
+                    ClassCourse.id,
+                ),
             )
             .limit(1)
         )
         return result.scalar_one_or_none() is not None
 
     def _authorized_feed_condition(self, user_id: int):
-        approved_classroom_ids = (
-            select(ClassMembership.classroom_id)
-            .where(
-                ClassMembership.user_id == user_id,
-                ClassMembership.status == MEMBERSHIP_STATUS_APPROVED,
-            )
-        )
-        registered_course_ids = (
-            select(CourseRegistration.class_course_id)
-            .join(ClassMembership, ClassMembership.id == CourseRegistration.membership_id)
-            .join(ClassCourse, ClassCourse.id == CourseRegistration.class_course_id)
-            .where(
-                ClassMembership.user_id == user_id,
-                ClassMembership.status == MEMBERSHIP_STATUS_APPROVED,
-                CourseRegistration.is_active.is_(True),
-                ClassCourse.is_active.is_(True),
-            )
-        )
-        active_course_task = self._active_class_course_task_condition()
-
-        return or_(
-            and_(
-                Task.visibility == TASK_VISIBILITY_PERSONAL,
-                Task.created_by_user_id == user_id,
-                active_course_task,
-            ),
-            and_(
-                Task.visibility == TASK_VISIBILITY_SHARED,
-                Task.classroom_id.in_(approved_classroom_ids),
-                Task.class_course_id.is_(None),
-            ),
-            and_(
-                Task.visibility == TASK_VISIBILITY_SHARED,
-                Task.class_course_id.in_(registered_course_ids),
-                active_course_task,
-            ),
-        )
-
-    def _active_class_course_task_condition(self):
-        return or_(
-            Task.class_course_id.is_(None),
-            Task.class_course.has(ClassCourse.is_active.is_(True)),
-        )
+        return task_access_condition(user_id)
 
     def _progress_join_for_user(self, user_id: int):
         approved_membership_ids = (

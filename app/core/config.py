@@ -45,6 +45,10 @@ class Settings(BaseSettings):
     COURSE_RESOURCE_ALLOWED_EXTENSIONS: list[str] = Field(default_factory=lambda: ["pdf"])
     COURSE_RESOURCE_ALLOWED_CONTENT_TYPES: list[str] = Field(default_factory=lambda: ["application/pdf"])
 
+    REMINDER_LEAD_MINUTES: int = Field(default=24 * 60, ge=0)
+    REMINDER_BATCH_SIZE: int = Field(default=100, gt=0)
+    DASHBOARD_LIST_LIMIT: int = Field(default=5, gt=0)
+
     TASK_ATTACHMENT_STORAGE_DIR: str = "storage/task_attachments"
     TASK_ATTACHMENT_MAX_SIZE_BYTES: int = 10 * 1024 * 1024
     TASK_ATTACHMENT_ALLOWED_EXTENSIONS: list[str] = Field(

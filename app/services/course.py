@@ -17,6 +17,7 @@ from app.schemas.course import (
     CourseRegistrationRead,
 )
 from app.services.rag import RagChatService
+from app.services.reminder import ReminderService
 
 
 class CourseService:
@@ -27,12 +28,14 @@ class CourseService:
         registration_repository: CourseRegistrationRepository,
         membership_repository: ClassMembershipRepository,
         rag_service: RagChatService | None = None,
+        reminder_service: ReminderService | None = None,
     ) -> None:
         self.course_repository = course_repository
         self.class_course_repository = class_course_repository
         self.registration_repository = registration_repository
         self.membership_repository = membership_repository
         self.rag_service = rag_service
+        self.reminder_service = reminder_service
         self.session = course_repository.session
 
     async def list_courses(self, search: str | None = None) -> list[CourseRead]:
@@ -115,6 +118,7 @@ class CourseService:
                 membership_repository=self.membership_repository,
                 class_course_repository=self.class_course_repository,
                 registration_repository=self.registration_repository,
+                reminder_service=self.reminder_service,
             )
             await registration_service.register_existing_approved_members_for_default_course(class_course)
 
@@ -143,6 +147,7 @@ class CourseService:
                 membership_repository=self.membership_repository,
                 class_course_repository=self.class_course_repository,
                 registration_repository=self.registration_repository,
+                reminder_service=self.reminder_service,
             )
             await registration_service.register_existing_approved_members_for_default_course(class_course)
 
@@ -195,10 +200,12 @@ class CourseRegistrationService:
         membership_repository: ClassMembershipRepository,
         class_course_repository: ClassCourseRepository,
         registration_repository: CourseRegistrationRepository,
+        reminder_service: ReminderService | None = None,
     ) -> None:
         self.membership_repository = membership_repository
         self.class_course_repository = class_course_repository
         self.registration_repository = registration_repository
+        self.reminder_service = reminder_service
         self.session = registration_repository.session
 
     async def register_default_courses(self, membership) -> None:
@@ -210,6 +217,11 @@ class CourseRegistrationService:
                 membership_id=membership.id,
                 class_course_id=class_course.id,
             )
+            if self.reminder_service is not None:
+                await self.reminder_service.sync_user_course_reminders(
+                    class_course.id,
+                    membership.user_id,
+                )
 
     async def register_existing_approved_members_for_default_course(self, class_course: ClassCourse) -> None:
         """Register current approved class members when a default course is added or enabled."""
@@ -223,19 +235,32 @@ class CourseRegistrationService:
                 membership_id=membership.id,
                 class_course_id=class_course.id,
             )
+            if self.reminder_service is not None:
+                await self.reminder_service.sync_user_course_reminders(
+                    class_course.id,
+                    membership.user_id,
+                )
 
     async def register_optional_course(self, class_course_id: int, user_id: int) -> CourseRegistrationRead:
         """Register an approved class member in an active class course."""
         class_course = await self._get_active_class_course_or_404(class_course_id)
         membership = await self._get_approved_membership_for_class(user_id, class_course.classroom_id)
 
-        registration = await self._activate_or_create_registration(
-            membership_id=membership.id,
-            class_course_id=class_course.id,
-            fail_if_active=True,
-        )
-
-        await self.session.commit()
+        try:
+            registration = await self._activate_or_create_registration(
+                membership_id=membership.id,
+                class_course_id=class_course.id,
+                fail_if_active=True,
+            )
+            if self.reminder_service is not None:
+                await self.reminder_service.sync_user_course_reminders(
+                    class_course.id,
+                    membership.user_id,
+                )
+            await self.session.commit()
+        except Exception:
+            await self.session.rollback()
+            raise
         registration = await self.registration_repository.get_by_membership_and_class_course(membership.id, class_course.id)
         return CourseRegistrationRead.model_validate(registration)
 
@@ -251,8 +276,17 @@ class CourseRegistrationService:
         if registration is None or not registration.is_active:
             raise ClassFlowError("Active course registration not found", "COURSE_REGISTRATION_NOT_FOUND", status.HTTP_404_NOT_FOUND)
 
-        await self.registration_repository.drop(registration, datetime.now(timezone.utc))
-        await self.session.commit()
+        try:
+            await self.registration_repository.drop(registration, datetime.now(timezone.utc))
+            if self.reminder_service is not None:
+                await self.reminder_service.cancel_user_course_reminders(
+                    class_course.id,
+                    membership.user_id,
+                )
+            await self.session.commit()
+        except Exception:
+            await self.session.rollback()
+            raise
 
     async def list_my_courses(self, class_id: int, user_id: int) -> list[CourseRegistrationRead]:
         """Return the active course registrations for an approved class member."""
