@@ -5,6 +5,7 @@ function FormField({
   inputMode,
   label,
   min,
+  maxLength,
   name,
   onChange,
   placeholder,
@@ -27,6 +28,7 @@ function FormField({
         id={id}
         inputMode={inputMode}
         min={min}
+        maxLength={maxLength}
         name={name}
         onChange={onChange}
         placeholder={placeholder}

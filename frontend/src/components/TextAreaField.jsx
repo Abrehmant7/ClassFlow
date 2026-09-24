@@ -6,6 +6,7 @@ function TextAreaField({
   onChange,
   placeholder,
   rows = 4,
+  required = false,
   value,
 }) {
   const helpId = helpText ? `${id}-help` : undefined;
@@ -14,6 +15,7 @@ function TextAreaField({
     <div>
       <label htmlFor={id} className="cf-label">
         {label}
+        {required ? <span className="text-red-600"> *</span> : null}
       </label>
       <textarea
         aria-describedby={helpId}
@@ -23,6 +25,7 @@ function TextAreaField({
         onChange={onChange}
         placeholder={placeholder}
         rows={rows}
+        required={required}
         value={value}
       />
       {helpText ? (

@@ -29,9 +29,10 @@ import {
   toApiDeadline,
 } from "../utils/tasks.js";
 import { getDisplayName } from "../utils/user.js";
+import { browserTimezone } from "../utils/module7.js";
 
 const pageSize = 20;
-const timezone = "UTC";
+const timezone = browserTimezone();
 
 const defaultFilters = {
   view: "active",

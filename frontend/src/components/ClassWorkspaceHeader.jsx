@@ -8,6 +8,8 @@ function ClassWorkspaceHeader({ classroom, membership, actions }) {
     ? [
         { label: "Overview", to: `/classes/${classId}`, end: true },
         { label: "Tasks", to: `/classes/${classId}/tasks` },
+        { label: "Announcements", to: `/classes/${classId}/announcements` },
+        { label: "Resources", to: `/classes/${classId}/resources` },
         { label: "Courses", to: `/classes/${classId}/courses` },
         { label: "Chat", to: `/classes/${classId}/chat` },
         { label: "Members", to: `/classes/${classId}/members` },
